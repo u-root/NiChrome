@@ -1,0 +1,448 @@
+#!/bin/bash
+#
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# Script which ensures that a given image has an up-to-date
+# kernel partition, rootfs integrity hashes, and legacy bootloader configs.
+
+# --- BEGIN COMMON.SH BOILERPLATE ---
+# Load common CrOS utilities.  Inside the chroot this file is installed in
+# /usr/lib/crosutils.  Outside the chroot we find it relative to the script's
+# location.
+find_common_sh() {
+  local common_paths=("$(dirname "$(readlink -f "$0")")/.." /usr/lib/crosutils)
+  local path
+
+  SCRIPT_ROOT="${common_paths[0]}"
+  for path in "${common_paths[@]}"; do
+    if [ -r "${path}/common.sh" ]; then
+      SCRIPT_ROOT="${path}"
+      break
+    fi
+  done
+}
+
+find_common_sh
+. "${SCRIPT_ROOT}/common.sh" || exit 1
+# --- END COMMON.SH BOILERPLATE ---
+
+# Need to be inside the chroot to load chromeos-common.sh
+
+# Load functions and constants for chromeos-install
+. chromeos-common.sh || exit 1
+. "build_image_util.sh" || exit 1
+. "disk_layout_util.sh" || exit 1
+. "mount_gpt_util.sh" || exit 1
+
+switch_to_strict_mode
+
+if [ $# -lt 2 ]; then
+  echo "Usage: ${0} /PATH/TO/IMAGE IMAGE.BIN [shflags overrides]"
+  exit 1
+fi
+
+IMAGE_DIR="$(readlink -f "${1}")"
+IMAGE="${2}"
+shift
+shift
+FLAG_OVERRIDES=( "$@" )
+
+if get_boot_desc "${IMAGE_DIR}/boot.desc"; then
+  info "Boot-time configuration for ${IMAGE_DIR}:"
+  for flag in "${boot_desc_flags[@]}"; do
+    info "  ${flag}"
+  done
+else
+  warn "Falling back to command line parsing."
+fi
+
+if [ ! -r "${IMAGE}" ]; then
+  die "${IMAGE} cannot be read!"
+fi
+
+
+set +e
+
+# Now parse the build settings from ${OUTPUT_DIR}/boot.desc
+DEFINE_string adjust_part "" \
+  "Adjustments to apply to the partition table"
+DEFINE_string board "${DEFAULT_BOARD}" \
+  "Board we're building for."
+DEFINE_string image_type "base" \
+  "Type of image we're building for (base/factory_install)."
+DEFINE_string output_dir "/tmp" \
+  "Directory to place output in."
+DEFINE_string image "chromiumos_base.img" \
+  "Full path to the chromiumos image to make bootable."
+DEFINE_string arch "x86" \
+  "Architecture to make bootable for: arm, mips, x86, or amd64"
+DEFINE_boolean cleanup_dirs ${FLAGS_TRUE} \
+  "Whether the mount dirs should be removed on completion."
+
+DEFINE_string boot_args "noinitrd" \
+  "Additional boot arguments to pass to the commandline"
+
+DEFINE_integer rootfs_size 720 \
+  "rootfs filesystem size in MBs."
+# ceil(0.1 * rootfs_size) is a good minimum.
+DEFINE_integer rootfs_hash_pad 8 \
+  "MBs reserved at the end of the rootfs image."
+
+DEFINE_string rootfs_hash "/tmp/rootfs.hash" \
+  "Path where the rootfs hash should be stored."
+# TODO(taysom): when we turn on boot cache, both verification and
+# bootcache should have their default be FLAGS_TRUE.
+DEFINE_boolean enable_rootfs_verification ${FLAGS_TRUE} \
+  "Default all bootloaders to NOT use kernel-based root fs integrity checking."
+DEFINE_boolean enable_bootcache ${FLAGS_FALSE} \
+  "Default all bootloaders to NOT use bootcache."
+DEFINE_integer verity_error_behavior 3 \
+  "Kernel verified boot error behavior (0: I/O errors, 1: reboot, 2: nothing)"
+DEFINE_integer verity_max_ios -1 \
+  "Number of outstanding I/O operations dm-verity caps at."
+DEFINE_string verity_algorithm "sha1" \
+  "Cryptographic hash algorithm used for kernel vboot."
+DEFINE_string verity_salt "" \
+  "Salt for rootfs hash tree."
+
+DEFINE_string keys_dir "${VBOOT_DEVKEYS_DIR}" \
+  "Directory containing the signing keys."
+
+DEFINE_string rootfs_mountpoint "/tmp/rootfs" \
+  "Path where the rootfs can be safely mounted"
+DEFINE_string statefulfs_mountpoint "/tmp/statefulfs" \
+  "Path where the statefulfs can be safely mounted"
+DEFINE_string espfs_mountpoint "/tmp/espfs" \
+  "Path where the espfs can be safely mounted"
+
+DEFINE_boolean use_dev_keys ${FLAGS_FALSE} \
+  "Use developer keys for signing. (Default: false)"
+
+DEFINE_boolean fsck_rootfs ${FLAGS_FALSE} \
+  "Check integrity of the rootfs on the modified image."
+
+# TODO(pkumar): Remove once known that no images are using this flag
+DEFINE_boolean crosbug12352_arm_kernel_signing ${FLAGS_FALSE} \
+  "This flag is deprecated but the bots still need parse old images."
+
+# TODO(sosa):  Remove once known images no longer use this in their config.
+DEFINE_string arm_extra_bootargs "" "DEPRECATED FLAG.  Do not use."
+
+DEFINE_boolean force_developer_mode ${FLAGS_FALSE} \
+  "Add cros_debug to boot args."
+
+DEFINE_string enable_serial "" \
+  "Enable serial port for printks. Example values: ttyS0"
+DEFINE_integer loglevel 7 \
+  "The loglevel to add to the kernel command line."
+
+# Parse the boot.desc and any overrides
+set -- "${boot_desc_flags[@]}" "${FLAG_OVERRIDES[@]}"
+FLAGS "${@}" || exit 1
+
+[ -z "${FLAGS_verity_salt}" ] && FLAGS_verity_salt=$(make_salt)
+
+# Only now can we die on error.  shflags functions leak non-zero error codes,
+# so will die prematurely if 'switch_to_strict_mode' is specified before now.
+switch_to_strict_mode -u
+
+append_boot_flag() {
+  local file="$1"
+  local pattern="$2"
+  local base_pattern="$3"
+
+  [ -f "${file}" ] || return ${FLAGS_TRUE}
+  grep -wq "${pattern}" "${file}" && return ${FLAGS_TRUE}
+  sudo sed -i "s/\b${base_pattern}\b/& ${pattern}/g" "${file}"
+}
+
+check_kernel_size() {
+  local kernel_image_size="$1"
+  local kernel_part="$2"
+  local kernel_slot="$3"
+  local kernel_partition_size=$(get_partition_size ${FLAGS_image_type} \
+                                                   ${kernel_part})
+  local kernel_partition_size_90=$(( kernel_partition_size * 90 / 100 ))
+  info "Kernel partition ${kernel_slot} size is ${kernel_partition_size} bytes."
+  if [[ ${kernel_image_size} -gt ${kernel_partition_size} ]]; then
+    die "Kernel image won't fit in partition ${kernel_slot}!"
+  elif [[ ${kernel_image_size} -gt ${kernel_partition_size_90} ]]; then
+    warn "Kernel partition ${kernel_slot} is more than 90% full!"
+  fi
+}
+
+build_img() {
+  local image_name="$1"
+  local root_dev="$2"
+  local root_dev_size="$3"
+  local keyblock="$4"
+  local private="$5"
+  local public="$6"
+  local vblock=${7:-""}
+
+  # Default to non-verified
+  local enable_rootfs_verification_flag=--noenable_rootfs_verification
+  if [[ ${FLAGS_enable_rootfs_verification} -eq ${FLAGS_TRUE} ]]; then
+    enable_rootfs_verification_flag=--enable_rootfs_verification
+  fi
+  local enable_bootcache_flag=--noenable_bootcache
+  if [[ ${FLAGS_enable_bootcache} -eq ${FLAGS_TRUE} ]]; then
+    enable_bootcache_flag=--enable_bootcache
+  fi
+
+  if [[ -n "${vblock}" ]]; then
+    vblock=--hd_vblock="${FLAGS_output_dir}/${vblock}"
+  fi
+
+  ./build_kernel_image.sh \
+    --board="${FLAGS_board}" \
+    --arch="${FLAGS_arch}" \
+    --to="${FLAGS_output_dir}/${image_name}" \
+    --vmlinuz="${FLAGS_rootfs_mountpoint}/boot/vmlinuz" \
+    --working_dir="${FLAGS_output_dir}" \
+    --boot_args="${FLAGS_boot_args}" \
+    --keep_work \
+    --rootfs_image=${root_dev} \
+    --rootfs_image_size=${root_dev_size} \
+    --rootfs_hash=${FLAGS_rootfs_hash} \
+    --verity_hash_alg=${FLAGS_verity_algorithm} \
+    --verity_max_ios=${FLAGS_verity_max_ios} \
+    --verity_error_behavior=${FLAGS_verity_error_behavior} \
+    --verity_salt=${FLAGS_verity_salt} \
+    --keys_dir="${FLAGS_keys_dir}" \
+    --keyblock="${keyblock}" \
+    --private="${private}" \
+    --public="${public}" \
+    --enable_serial="${FLAGS_enable_serial}" \
+    ${vblock} \
+    ${enable_rootfs_verification_flag} \
+    ${enable_bootcache_flag}
+}
+
+make_image_bootable() {
+  local image="$1"
+
+  # Update legacy boot config templates (in rootfs) before rootfs is locked.
+  # This is required because postinst will copy new legacy boot configurations
+  # from rootfs partition instead of modifying existing entries in EFI
+  # partition.
+  if [ ${FLAGS_force_developer_mode} -eq ${FLAGS_TRUE} ]; then
+    trap "unmount_image ; die 'cros_make_image_bootable failed.'" EXIT
+    mount_image "${image}" "${FLAGS_rootfs_mountpoint}" \
+      "${FLAGS_statefulfs_mountpoint}" "" ""
+
+    append_boot_flag "${FLAGS_rootfs_mountpoint}/boot/syslinux/root.A.cfg" \
+      "cros_debug" "cros_legacy"
+    append_boot_flag "${FLAGS_rootfs_mountpoint}/boot/syslinux/root.B.cfg" \
+      "cros_debug" "cros_legacy"
+    append_boot_flag "${FLAGS_rootfs_mountpoint}/boot/syslinux/usb.A.cfg" \
+      "cros_debug" "cros_legacy"
+    append_boot_flag "${FLAGS_rootfs_mountpoint}/boot/efi/boot/grub.cfg" \
+      "cros_debug" "cros_efi"
+
+    unmount_image
+    trap - EXIT
+  fi
+
+  # Make the filesystem un-mountable as read-write.
+  # mount_gpt_image.sh will undo this as needed.
+  # TODO(wad) make sure there is parity in the signing scripts.
+  if [ ${FLAGS_enable_rootfs_verification} -eq ${FLAGS_TRUE} ]; then
+    # TODO(wad) this would be a good place to reset any other ext2 metadata.
+    warn "Disabling r/w mount of the root filesystem"
+    local rootfs_offset="$(partoffset ${image} 3)"
+    disable_rw_mount "${image}" "$(( rootfs_offset * 512 ))"
+  fi
+
+  trap "unmount_image ; die 'cros_make_image_bootable failed.'" EXIT
+  mount_image "${image}" "${FLAGS_rootfs_mountpoint}" \
+    "${FLAGS_statefulfs_mountpoint}" "" "--safe"
+
+  # Newer `mount` will decode the filename backing the loop device,
+  # so we need to dig deeper and find the answer ourselves.
+  root_dev=$(awk -v mnt="${FLAGS_rootfs_mountpoint}" \
+             '$2 == mnt { print $1 }' /proc/mounts)
+  if [[ -z "${root_dev}" ]]; then
+    # If the read-only rootfs is not mounted via the kernel using a real block
+    # device and we need to create one here. So far, all the filesystems we
+    # use in the rootfs can be mounted read-only by the kernel (including
+    # squashfs) so we just exit if that's the case.
+    die "Didn't find the rootfs block device device after mounting it."
+  fi
+
+  # We sign the image with the recovery_key, because this is what goes onto the
+  # USB key. We can only boot from the USB drive in recovery mode.
+  # For dev install shim, we need to use the installer keyblock instead of
+  # the recovery keyblock because of the difference in flags.
+  local keyblock
+  if [ ${FLAGS_use_dev_keys} -eq ${FLAGS_TRUE} ]; then
+    keyblock=installer_kernel.keyblock
+    info "DEBUG: use dev install keyblock"
+  else
+    keyblock=recovery_kernel.keyblock
+    info "DEBUG: use recovery keyblock"
+  fi
+
+  if [ ${FLAGS_force_developer_mode} -eq ${FLAGS_TRUE} ]; then
+    FLAGS_boot_args="${FLAGS_boot_args} cros_debug"
+  fi
+
+  # Builds the kernel partition image.
+  local partition_num_root_a="$(get_layout_partition_number \
+    "${FLAGS_image_type}" ROOT-A)"
+  local rootfs_fs_size=$(get_filesystem_size "${FLAGS_image_type}" \
+    "${partition_num_root_a}")
+  #build_img "vmlinuz.image" "${root_dev}" "${rootfs_fs_size}" "${keyblock}" \
+  #          "recovery_kernel_data_key.vbprivk" "recovery_key.vbpubk"
+  #build_img "hd_vmlinuz.image" "${root_dev}" "${rootfs_fs_size}" \
+  #          "kernel.keyblock" "kernel_data_key.vbprivk" "kernel_subkey.vbpubk" \
+  #          "vmlinuz_hd.vblock"
+
+  # Check the size of kernel image and issue warning when image size is
+  # near the limit.
+  local kernel_image_size_A=$(stat -c '%s' kernels/linux.bin)
+  info "Kernel image A   size is ${kernel_image_size_A} bytes."
+  local kernel_image_size_B=$(stat -c '%s' kernels/linux.bin)
+  info "Kernel image B   size is ${kernel_image_size_B} bytes."
+  local partition_num_kern_a="$(get_layout_partition_number \
+    "${FLAGS_image_type}" KERN-A)"
+  check_kernel_size ${kernel_image_size_A} ${partition_num_kern_a} A
+  local partition_num_kern_b="$(get_layout_partition_number \
+    "${FLAGS_image_type}" KERN-B)"
+  check_kernel_size ${kernel_image_size_B} ${partition_num_kern_b} B
+
+#  local rootfs_hash_size=$(stat -c '%s' ${FLAGS_rootfs_hash})
+#  local rootfs_partition_size=$(get_partition_size ${FLAGS_image_type} \
+#      ${partition_num_root_a})
+#  local rootfs_hash_pad=$(( rootfs_partition_size - rootfs_fs_size ))
+#  info "Appending rootfs.hash (${rootfs_hash_size} bytes) to the root fs"
+#  if [[ ${rootfs_hash_size} -gt ${rootfs_hash_pad} ]]
+#  then
+#    die "rootfs_partition_size - rootfs_fs_size is less than the needed " \
+#        "rootfs_hash_size (${rootfs_hash_size}), update your disk layout " \
+#        "configuration"
+#  fi
+#  # Unfortunately, mount_gpt_image uses mount and not losetup to create the
+#  # loop devices.  This means that they are not the correct size.  We have to
+#  # write directly to the image to append the hash tree data.
+#  local hash_offset="$(partoffset ${image} ${partition_num_root_a})"
+#  hash_offset=$((hash_offset + (${rootfs_fs_size} / 512)))
+#  sudo dd bs=512 \
+#          seek=${hash_offset} \
+#          if="${FLAGS_rootfs_hash}" \
+#          of="${image}" \
+#          conv=notrunc \
+#          status=none
+#
+#  # Move the verification block needed for the hard disk install to the
+#  # stateful partition. Mount stateful fs, copy file, and umount fs.
+#  # In original CL: http://codereview.chromium.org/2868044, this was done in
+#  # create_base_image(). However, it could break the build if it is a clean
+#  # build because vmlinuz_hd.vblock hasn't been created by build_kernel_image.sh
+#  # In some builds that don't use vboot to verify the kernel, this file might
+#  # not get created as part of the build, so only copy them if they were.
+#  if [ -f "${FLAGS_output_dir}/vmlinuz_hd.vblock" ]; then
+#    sudo cp "${FLAGS_output_dir}/vmlinuz_hd.vblock" \
+#            "${FLAGS_statefulfs_mountpoint}"
+#  fi
+
+  # Install the kernel to both slots A and B so there will always be a regular
+  # kernel in slot B on recovery and non-recovery images.
+  local koffset="$(partoffset ${image} ${partition_num_kern_a})"
+  sudo dd if="kernels/linux.bin" of="${image}" \
+    conv=notrunc bs=512 seek=${koffset} status=none
+  koffset="$(partoffset ${image} ${partition_num_kern_b})"
+  sudo dd if="kernels/linux.bin" of="${image}" \
+    conv=notrunc bs=512 seek=${koffset} status=none
+
+  # Update the bootloaders.  The EFI system partition will be updated.
+#  local kernel_part=
+#
+#  # We should update the esp in place in the image.
+#  local bootloader_to="${image}"
+#  local partition_num_efi_system="$(get_layout_partition_number \
+#    "${FLAGS_image_type}" EFI-SYSTEM)"
+#  local esp_offset="$(partoffset ${image} ${partition_num_efi_system})"
+#  esp_offset=$((esp_offset * 512))  # sectors to bytes
+#  local esp_size="$(partsize ${image} ${partition_num_efi_system})"
+#  esp_size=$((esp_size * 512))  # sectors to bytes
+#  local bootloader_to_flags="--to_offset=${esp_offset} --to_size=${esp_size}"
+#
+#  if [[ "${FLAGS_arch}" = "x86" || "${FLAGS_arch}" = "amd64" ]]; then
+#    # Use the kernel partition to acquire configuration flags.
+#    kernel_part="--kernel_partition='${FLAGS_output_dir}/vmlinuz.image'"
+#    # Install syslinux on the EFI System Partition.
+#    kernel_part="${kernel_part} --install_syslinux"
+#  elif [[ "${FLAGS_arch}" = "arm" || "${FLAGS_arch}" = "mips" ]]; then
+#    # These flags are not used for ARM / MIPS update_bootloaders.sh
+#    kernel_part=""
+#  fi
+#
+#  if [[ ${esp_size} -gt 0 ]]; then
+#    # Update EFI partition
+#    ./update_bootloaders.sh \
+#      --arch="${FLAGS_arch}" \
+#      --image_type="${FLAGS_image_type}" \
+#      --to="${bootloader_to}" \
+#      --from="${FLAGS_rootfs_mountpoint}"/boot \
+#      --vmlinuz="${FLAGS_rootfs_mountpoint}"/boot/vmlinuz \
+#      ${bootloader_to_flags} \
+#      ${kernel_part}
+#  fi
+#
+#  # We don't need to keep these files around anymore.
+#  sudo rm -f "${FLAGS_rootfs_hash}" "${FLAGS_output_dir}/vmlinuz.image" \
+#             "${FLAGS_output_dir}/hd_vmlinuz.image" \
+#             "${FLAGS_output_dir}/vmlinuz_hd.vblock"
+#
+  unmount_image
+  trap - EXIT
+}
+
+verify_image_rootfs() {
+  local image=$1
+  local partition_num_root_a="$(get_layout_partition_number \
+    "${FLAGS_image_type}" ROOT-A)"
+  local rootfs_offset="$(partoffset ${image} ${partition_num_root_a})"
+
+  local rootfs_tmp_file=$(mktemp)
+  trap "rm ${rootfs_tmp_file}" EXIT
+  sudo dd if="${image}" of="${rootfs_tmp_file}" bs=512 skip="${rootfs_offset}" \
+          status=none
+
+  # This flips the read-only compatibility flag, so that
+  # e2fsck does not complain about unknown file system capabilities.
+  enable_rw_mount "${rootfs_tmp_file}"
+  info "Running e2fsck to check root file system for errors"
+  sudo e2fsck -fn "${rootfs_tmp_file}" ||
+    die "Root file system has errors, please ensure boot.desc and/or \
+command line parameters are correct"
+}
+
+# Store output and temporary files next to image.
+FLAGS_output_dir="${IMAGE_DIR}"
+FLAGS_rootfs_hash="${IMAGE_DIR}/rootfs.hash"
+FLAGS_rootfs_mountpoint="${IMAGE_DIR}/rootfs_dir"
+FLAGS_statefulfs_mountpoint="${IMAGE_DIR}/stateful_dir"
+FLAGS_espfs_mountpoint="${IMAGE_DIR}/esp"
+
+# Create the directories if they don't exist.
+mkdir -p ${FLAGS_rootfs_mountpoint}
+mkdir -p ${FLAGS_statefulfs_mountpoint}
+mkdir -p ${FLAGS_espfs_mountpoint}
+
+make_image_bootable "${IMAGE}"
+if type -p board_make_image_bootable; then
+  board_make_image_bootable "${IMAGE}"
+fi
+if [ ${FLAGS_fsck_rootfs} -eq ${FLAGS_TRUE} ]; then
+  verify_image_rootfs "${IMAGE}"
+fi
+
+if [ ${FLAGS_cleanup_dirs} -eq ${FLAGS_TRUE} ]; then
+  rmdir ${FLAGS_rootfs_mountpoint}
+  rmdir ${FLAGS_statefulfs_mountpoint}
+  rmdir ${FLAGS_espfs_mountpoint}
+fi
