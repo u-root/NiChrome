@@ -283,4 +283,7 @@ create_base_image() {
       ${output_dev} ${USE_DEV_KEYS} --adjust_part="${FLAGS_adjust_part}"
   fi
 }
+# Example Usage
+#
+# create_base_image usb true true /dev/sdx
 create_base_image $1 $2 $3 $4
