@@ -1,0 +1,40 @@
+#!/bin/bash -eu
+# File automatically generated. Do not edit.
+
+usage() {
+  local ret=0
+  if [[ $# -gt 0 ]]; then
+    # Write to stderr on errors.
+    exec 1>&2
+    echo "ERROR: $*"
+    echo
+    ret=1
+  fi
+  echo "Usage: $0 [image] [part]"
+  echo "Example: $0 chromiumos_image.bin"
+  exit ${ret}
+}
+
+TARGET=${1:-}
+PART=${2:-}
+case ${TARGET} in
+-h|--help)
+  usage
+  ;;
+"")
+  for TARGET in chromiumos_{,base_}image.bin ""; do
+    if [[ -e ${TARGET} ]]; then
+      echo "autodetected image: ${TARGET}"
+      break
+    fi
+  done
+  if [[ -z ${TARGET} ]]; then
+    usage "could not autodetect an image"
+  fi
+  ;;
+*)
+  if [[ ! -e ${TARGET} ]]; then
+    usage "image does not exist: ${TARGET}"
+  fi
+esac
+
