@@ -18,6 +18,10 @@ const (
 func cgpt(args ...string) (string, string, error){
 	return execute("./cgpt.py", args...)
 }
+
+func mkfs(format string, args ...string) (string, string, error) {
+	return execute("mkfs." + format, args...)
+}
 func checkValidLayout(imageType string) {
 	cgpt("layout", imageType, diskLayoutPath)
 }
@@ -223,8 +227,6 @@ func emitGPTScripts(outdev string, directory string) error {
 				return err
 			}
 
-
-
 			f.Close()
 		}
 	}
@@ -248,11 +250,130 @@ func emitGPTScripts(outdev string, directory string) error {
 
 }
 
-func buildGptImage(outdev string, diskLayout string) {
+func mkFS(imageFile, imageType, partNum string) error {
+
+	FSFormat, _, err := cgpt("readfsformat", imageType, diskLayoutPath, partNum)
+	if err != nil {
+		return err
+	}
+
+	FSOptions, _, err := cgpt("readfsoptions", imageType, diskLayoutPath, partNum)
+	if err != nil {
+		return err
+	} else if len(FSOptions) == 0 {
+		return nil
+	}
+
+	FSBytes, _, err := cgpt("readpartsize", imageType, diskLayoutPath, partNum)
+	if err != nil {
+		return err
+	}
+
+	FSBlockSize, _, err := cgpt("readfsblocksize", diskLayoutPath)
+	if err != nil {
+		return err
+	}
+
+	bytes, err := strconv.Atoi(FSBytes)
+	if err != nil {
+		return err
+	}
+
+	blocks, err := strconv.Atoi(FSBlockSize)
+	if err != nil {
+		return err
+	}
+
+	if bytes < blocks {
+		return nil
+	}
+
+	FSBlockSize, _, err := cgpt("readfsblocksize", diskLayoutPath)
+	if err != nil {
+		return err
+	}
+
+	FSLabel, _, err := cgpt("readlabel", imageType, diskLayoutPath, partNum)
+	if err != nil {
+		return err
+	}
+
+	FSUUID, _, err := cgpt("readuuid", imageType, diskLayoutPath, partNum)
+	if err != nil {
+		return err
+	}
+
+	FSType, _, err := cgpt("readuuid", imageType, diskLayoutPath, partNum)
+	if err != nil {
+		return err
+	}
+
+	partOffsetString, _, err := cgpt("show", "-s", "-i", partNum, imageType)
+	if err != nil {
+		return err
+	}
+
+	val, err := strconv.Atoi(partOffsetString)
+	if err != nil {
+		return err
+	}
+
+	offset, err := strconv.Itos(val * 512)
+	if err != nil {
+		return err
+	}
+
+	partDev, _, err := execute("losetup", "-f", "--show", "--offset=" + offset, "--sizelimit=" + FSBytes, imageFile)
+	if err != nil {
+		return err
+	} else if len(partDev) == 0 {
+		return fmt.Errorf("Somethings wrong with losetup")
+	}
+
+	switch FSFormat {
+	case "ext2", "ext3", "ext4":
+		UUIDOption := ""
+		if FSUUID == "clear" {
+			FSUUID = "00000000-0000-0000-0000-000000000000"
+		}
+
+		if FSUUID != "random" {
+			UUIDOption = "-U " + FSUUID
+		}
+
+		val := strconv.FormatFloat(float64(bytes)/float64(blocks), 'E', -1, 64)
+		mkfs(FSFormat, "-F", "-q", "-O", "ext_attr", UUIDOption, "-E lazy_itable_init=0", "-b " + FSBlockSize, partDev, val)
+
+		execute("tune2fs", "-L", FSLabel, "-c 0", "-i 0", "-T 20091119110000", "-m 0", "-r 0", "-e remount-ro", partDev, FSOptions, "</dev/null")
+
+	case "fat12", "fat16", "fat32":
+		mkfs("vfat", "-F " + FSFormat, "-n " + FSLabel, partDev, FSOptions)
+	case "fat", "vfat":
+		mkfs("vfat", "-n " + FSLabel, partDev, FSOptions)
+	case "squashfs":
+		squashDir := ioutil.TempDir()
+
+		regexp.Compile()
+	}
+
+
+
+
+
+}
+
+func buildGptImage(outdev string, diskLayout string) error {
 	partitionScriptPath := filepath.Join(outdev, "partition_script.sh")
 
-	writePartitionScript(diskLayout, partitionScriptPath)
-	runPartitionScript(outdev, partitionScriptPath)
+	if err := writePartitionScript(diskLayout, partitionScriptPath); err != nil {
+		return err
+	}
+	if err := runPartitionScript(outdev, partitionScriptPath); err != nil {
+		return err
+	}
+	if err := emitGPTScripts(outdev, filepath.Dir(outdev)); err != nil {
+		return err
+	}
 
-	emitGPTScripts(outdev, filepath.Dir(outdev))
+
 }
