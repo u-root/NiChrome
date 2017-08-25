@@ -1,0 +1,5 @@
+# See README.disk_layout for a description of this file format.
+# This is the root of all the Chromium OS disk layout stacks.
+{
+  "layouts": {}
+}

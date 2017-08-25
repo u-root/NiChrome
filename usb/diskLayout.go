@@ -1,33 +1,34 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
-	"bufio"
-	"strings"
-	"log"
 	"strconv"
-	"fmt"
+	"strings"
 	"syscall"
+	"os/exec"
 )
 
 const (
 	PartitionScriptPath = "usr/sbin/write_gpt.sh"
-	diskLayoutPath = "./legacy_disk_layout.json"
+	diskLayoutPath      = "./legacy_disk_layout.json"
 )
-func cgpt(args ...string) (string, string, error){
+
+func cgpt(args ...string) (string, string, error) {
 	return execute("./cgpt.py", args...)
 }
 
 func mkfs(format string, args ...string) (string, string, error) {
-	return execute("mkfs." + format, args...)
+	return execute("mkfs."+format, args...)
 }
 
-
 func getPartitions(imageType string) (int, error) {
-	out, _, err := cgpt("readpartitionnums", imageType, diskLayoutPath )
+	out, _, err := cgpt("readpartitionnums", imageType, diskLayoutPath)
 	if err != nil {
 		return 0, err
 	}
@@ -44,50 +45,70 @@ func writePartitionScript(image_type string, path string) error {
 
 	tmpFile, err := ioutil.TempFile("", "tmp")
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
-	os.MkdirAll(filepath.Dir(path), 0777)
-	cgpt("write", image_type, diskLayoutPath, tmpFile.Name())
-	os.Rename(tmpFile.Name(), path)
-	os.Chmod(path, 444)
 
-	return nil
+	defer tmpFile.Close()
+
+	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	if out, stderror, err := cgpt("write", image_type, diskLayoutPath, tmpFile.Name()); err != nil {
+		log.Fatal(err, out, stderror)
+		return err
+	}
+
+	if err := os.Rename(tmpFile.Name(), path); err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	return os.Chmod(path, 444)
 }
 
 func runPartitionScript(outdev string, path string) error {
-	if _, _, err := execute(path); err != nil {
-		return err
-	}
-	if _, _, err := execute("write_partition_table", outdev, "/dev/zero"); err != nil {
-		return err
-	}
-	return nil
+	//if _, _, err := execute(path); err != nil {
+	//	log.Fatal(err)
+	//	return err
+	//}
+	//if _, _, err := execute("write_partition_table", outdev, "/dev/zero"); err != nil {
+	//	log.Fatal(err)
+	//	return err
+	//}
+	//return nil
+
+	cmd := exec.Command("/bin/sh", "-c", path + ";", "write_partition_table", outdev, "/dev/zero")
+
+	return cmd.Run()
 }
 
 func formatMountText(dir, label, size_b, start_b, target string) string {
 
 	mountRawText :=
 		`(
-		mkdir -p %[1]
-		m=( sudo mount -o loop,offset=%[3],sizelimit=%[2] %[5] %[1] )
+		mkdir -p %[1]s
+		m=( sudo mount -o loop,offset=%[3]s,sizelimit=%[2]s %[5]s %[1]s )
 		if ! "${m[@]}"; then
 		if ! "${m[@]}" -o ro; then
-		rmdir %[1]
+		rmdir %[1]s
 		exit 0
 		fi
 		fi
-		ln -sfT %[1] "%[1]_%[2]"
+		ln -sfT %[1]s "%[1]s_%[2]s"
 		) &`
 
-	return fmt.Sprintf(mountRawText, dir, start_b, size_b, label)
+	return fmt.Sprintf(mountRawText, dir, start_b, size_b, label, target)
 
 }
 
 func formatUnpackText(ddArgs, file, label, start, target string) string {
 	unpackRawText :=
 		`
-		dd if=%[5] of=%[3] %[1] skip=%[4]
-		ln -sfT %[2] "%[2]_%[3]"
+		dd if=%[5]s of=%[3]s %[1]s skip=%[4]s
+		ln -sfT %[2]s "%[2]s_%[3]s"
 		`
 	return fmt.Sprintf(unpackRawText, ddArgs, file, label, start, target)
 }
@@ -96,7 +117,7 @@ func formatPackText(ddArgs, file, start, target string) string {
 
 	packRawText :=
 		`
-		dd if=%[2] of=%[4] %[1] seek=%[3] conv=notrunc
+		dd if=%[2]s of=%[4]s %[1]s seek=%[3]s conv=notrunc
 		`
 	return fmt.Sprintf(packRawText, ddArgs, file, start, target)
 }
@@ -104,11 +125,11 @@ func formatPackText(ddArgs, file, start, target string) string {
 func formatUmountText(dir, label string) string {
 	umountRawText :=
 		`
-		if [[ -d %[1] ]]; then
+		if [[ -d %[1]s ]]; then
 		  (
-		  sudo umount %[1] || :
-		  rmdir %[1]
-		  rm -f "%[1]_%[2]"
+		  sudo umount %[1]s || :
+		  rmdir %[1]s
+		  rm -f "%[1]s_%[2]s"
 		  ) &
 		fi
 		`
@@ -117,25 +138,29 @@ func formatUmountText(dir, label string) string {
 
 func formatHeaderText(label, part string) string {
 	headerRawText :=
-	`
-	case ${PART:-%s[2]} in
-	%[2]|"%[1]")
+		`
+	case ${PART:-%[2]s} in
+	%[2]s|"%[1]s")
 	`
 	return fmt.Sprintf(headerRawText, label, part)
 }
 func emitGPTScripts(outdev string, directory string) error {
-	templateContents, err := ioutil.ReadFile("templates/GPT")
+	templateContents, err := ioutil.ReadFile("template/GPT")
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
 
-	cgptOutput, _, err := cgpt("show", outdev)
+	cgptOutput, stderror, err := execute("./cgpt", "show", outdev)
 	if err != nil {
+		fmt.Println(outdev)
+		log.Fatal(cgptOutput, stderror, err)
 		return err
 	}
 
 	FrontOfLine, err := regexp.Compile("^")
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
 
@@ -151,23 +176,24 @@ func emitGPTScripts(outdev string, directory string) error {
 		ioutil.WriteFile(name, templateContents, 777)
 		f, err := os.OpenFile(name, os.O_APPEND|os.O_WRONLY, 0600)
 		if err != nil {
+			log.Fatal(err)
 			return err
 		}
 
 		if _, err = f.WriteString(formattedOutput); err != nil {
+			log.Fatal(err)
 			return err
 		}
 		f.Close()
 	}
 
-	cgptShowOutput, _, err := cgpt("show", "-q=" + outdev)
+	cgptShowOutput, _, err := cgpt("show", "-q="+outdev)
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
 
 	whiteSpace, err := regexp.Compile("\\s+")
-
-
 
 	outputScanner := bufio.NewScanner(strings.NewReader(cgptShowOutput))
 	for outputScanner.Scan() {
@@ -185,23 +211,22 @@ func emitGPTScripts(outdev string, directory string) error {
 		startB := ""
 		sizeB := ""
 
-		if val, err := strconv.Atoi(start);  err != nil {
+		if val, err := strconv.Atoi(start); err != nil {
 			startB = strconv.Itoa(val * 512)
 		} else {
 			log.Fatal("Somethings Wrong with cgpt")
 		}
 
-		if val, err := strconv.Atoi(size);  err != nil {
+		if val, err := strconv.Atoi(size); err != nil {
 			sizeB = strconv.Itoa(val * 512)
 		} else {
 			log.Fatal("Somethings Wrong with cgpt")
 		}
 
-		label, _, err := cgpt("show", outdev, "-i=" + part, "-l")
+		label, _, err := cgpt("show", outdev, "-i="+part, "-l")
 		if err != nil {
 			log.Fatal("Something is Wrong with cgpt")
 		}
-
 
 		headerText := formatHeaderText(label, part)
 		unpackText := formatUnpackText(ddArgs, file, label, start, target)
@@ -212,10 +237,12 @@ func emitGPTScripts(outdev string, directory string) error {
 		for _, name := range names {
 			f, err := os.OpenFile(name, os.O_APPEND|os.O_WRONLY, 0600)
 			if err != nil {
+				log.Fatal(err)
 				return err
 			}
 
 			if _, err = f.WriteString(headerText); err != nil {
+				log.Fatal(err)
 				return err
 			}
 
@@ -238,6 +265,7 @@ func emitGPTScripts(outdev string, directory string) error {
 			}
 
 			if _, err = f.WriteString("esac\n"); err != nil {
+				log.Fatal(err)
 				return err
 			}
 
@@ -248,10 +276,12 @@ func emitGPTScripts(outdev string, directory string) error {
 	for _, name := range []string{mount, umount} {
 		f, err := os.OpenFile(name, os.O_APPEND|os.O_WRONLY, 0600)
 		if err != nil {
+			log.Fatal(err)
 			return err
 		}
 
 		if _, err = f.WriteString("wait\n"); err != nil {
+			log.Fatal(err)
 			return err
 		}
 	}
@@ -268,11 +298,13 @@ func mkFS(imageFile, imageType, partNum string) error {
 
 	FSFormat, _, err := cgpt("readfsformat", imageType, diskLayoutPath, partNum)
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
 
 	FSOptions, _, err := cgpt("readfsoptions", imageType, diskLayoutPath, partNum)
 	if err != nil {
+		log.Fatal(err)
 		return err
 	} else if len(FSOptions) == 0 {
 		return nil
@@ -280,21 +312,25 @@ func mkFS(imageFile, imageType, partNum string) error {
 
 	FSBytes, _, err := cgpt("readpartsize", imageType, diskLayoutPath, partNum)
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
 
 	FSBlockSize, _, err := cgpt("readfsblocksize", diskLayoutPath)
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
 
 	bytes, err := strconv.Atoi(FSBytes)
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
 
 	blocks, err := strconv.Atoi(FSBlockSize)
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
 
@@ -302,43 +338,41 @@ func mkFS(imageFile, imageType, partNum string) error {
 		return nil
 	}
 
-	FSBlockSize, _, err := cgpt("readfsblocksize", diskLayoutPath)
-	if err != nil {
-		return err
-	}
-
 	FSLabel, _, err := cgpt("readlabel", imageType, diskLayoutPath, partNum)
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
 
 	FSUUID, _, err := cgpt("readuuid", imageType, diskLayoutPath, partNum)
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
 
 	FSType, _, err := cgpt("readuuid", imageType, diskLayoutPath, partNum)
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
 
 	partOffsetString, _, err := cgpt("show", "-s", "-i", partNum, imageType)
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
 
 	val, err := strconv.Atoi(partOffsetString)
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
 
-	offset, err := strconv.Itos(val * 512)
-	if err != nil {
-		return err
-	}
+	offset := strconv.Itoa(val * 512)
 
-	partDev, _, err := execute("losetup", "-f", "--show", "--offset=" + offset, "--sizelimit=" + FSBytes, imageFile)
+	partDev, _, err := execute("losetup", "-f", "--show", "--offset="+offset, "--sizelimit="+FSBytes, imageFile)
 	if err != nil {
+		log.Fatal(err)
 		return err
 	} else if len(partDev) == 0 {
 		return fmt.Errorf("Somethings wrong with losetup")
@@ -356,39 +390,45 @@ func mkFS(imageFile, imageType, partNum string) error {
 		}
 
 		val := strconv.FormatFloat(float64(bytes)/float64(blocks), 'E', -1, 64)
-		mkfs(FSFormat, "-F", "-q", "-O", "ext_attr", UUIDOption, "-E lazy_itable_init=0", "-b " + FSBlockSize, partDev, val)
+		mkfs(FSFormat, "-F", "-q", "-O", "ext_attr", UUIDOption, "-E lazy_itable_init=0", "-b "+FSBlockSize, partDev, val)
 
 		execute("tune2fs", "-L", FSLabel, "-c 0", "-i 0", "-T 20091119110000", "-m 0", "-r 0", "-e remount-ro", partDev, FSOptions, "</dev/null")
 
 	case "fat12", "fat16", "fat32":
-		mkfs("vfat", "-F " + FSFormat, "-n " + FSLabel, partDev, FSOptions)
+		mkfs("vfat", "-F "+FSFormat, "-n "+FSLabel, partDev, FSOptions)
 	case "fat", "vfat":
-		mkfs("vfat", "-n " + FSLabel, partDev, FSOptions)
+		mkfs("vfat", "-n "+FSLabel, partDev, FSOptions)
 	case "squashfs":
-		squashDir, err := ioutil.TempDir("/tmp","")
+		squashDir, err := ioutil.TempDir("/tmp", "")
 		if err != nil {
+			log.Fatal(err)
 			return err
 		}
 		squashFile, err := ioutil.TempFile("/tmp", "")
 		if err != nil {
+			log.Fatal(err)
 			return err
 		}
 
 		os.Chmod(squashDir, 0755)
 
 		if _, _, err := execute("mksquashfs", squashDir, squashFile.Name(), "-noappend", "-all-root", "-no-progress", "-no-recovery", FSOptions); err != nil {
+			log.Fatal(err)
 			return err
 		}
 
-		if _, _, err := execute("dd", "if="+ squashFile, "of=" + partDev,"bs=4096", "status=none"); err != nil {
+		if _, _, err := execute("dd", "if="+squashFile.Name(), "of="+partDev, "bs=4096", "status=none"); err != nil {
+			log.Fatal(err)
 			return err
 		}
 
-		if _, _, err := mkfs(FSFormat, "-b " + FSBytes, "-d single", "-m single", "-M", "-L " + FSLabel, "-O " + FSOptions, partDev); err != nil {
+		if _, _, err := mkfs(FSFormat, "-b "+FSBytes, "-d single", "-m single", "-M", "-L "+FSLabel, "-O "+FSOptions, partDev); err != nil {
+			log.Fatal(err)
 			return err
 		}
 
 		if err := os.Remove(squashFile.Name()); err != nil {
+			log.Fatal(err)
 			return err
 		}
 
@@ -398,11 +438,13 @@ func mkFS(imageFile, imageType, partNum string) error {
 
 	mountDir, err := ioutil.TempDir("/tmp", "")
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
 
 	FSMount(partDev, mountDir, FSFormat, syscall.MS_RDONLY)
 	if err := os.Chown(mountDir, 0, 0); err != nil {
+		log.Fatal(err)
 		return err
 	}
 
@@ -421,23 +463,34 @@ func mkFS(imageFile, imageType, partNum string) error {
 	FSUmount(partDev, mountDir, FSFormat, FSOptions)
 	os.RemoveAll(mountDir)
 
+	return nil
 }
 
-func buildGptImage(outdev string, diskLayout string) error {
-	partitionScriptPath := filepath.Join(outdev, "partition_script.sh")
+func buildGptImage(outdev, diskLayout string) error {
+	partitionScriptPath := filepath.Join(BuildDir, "partition_script.sh")
 
+	fmt.Println("Writing script")
 	if err := writePartitionScript(diskLayout, partitionScriptPath); err != nil {
-		return err
-	}
-	if err := runPartitionScript(outdev, partitionScriptPath); err != nil {
-		return err
-	}
-	if err := emitGPTScripts(outdev, filepath.Dir(outdev)); err != nil {
+		log.Fatal(err)
 		return err
 	}
 
+	fmt.Println("Running partition scripts")
+	if err := runPartitionScript(outdev, partitionScriptPath); err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	fmt.Println("Emitting GPT scripts")
+	if err := emitGPTScripts(outdev, filepath.Dir(outdev)); err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	fmt.Println("Getting partitions")
 	partitions, err := getPartitions(diskLayout)
 	if err != nil {
+		log.Fatal(err)
 		return err
 	}
 
@@ -445,7 +498,8 @@ func buildGptImage(outdev string, diskLayout string) error {
 		mkFS(outdev, diskLayout, strconv.Itoa(i))
 	}
 
-	if _, _, err := execute("cgpt", "add", "-i 2", "-S 1", outdev); err != nil {
+	if _, _, err := execute("./cgpt", "add", "-i 2", "-S 1", outdev); err != nil {
+		log.Fatal(err)
 		return err
 	}
 

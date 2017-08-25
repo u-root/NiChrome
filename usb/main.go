@@ -4,6 +4,7 @@ import (
 	os "os"
 	"fmt"
 	"path/filepath"
+	"log"
 )
 
 const (
@@ -28,7 +29,7 @@ func mount_image(args ...string) error {
 	return nil
 }
 
-func createBaseImage(image_name string, rootfs_verfication bool, bootcache bool, output_dev string) error {
+func createBaseImage(image_name string, output_dev string) error {
 	// checkValidLayout(image_name)
 	info("Using image type " + image_name)
 	os.Mkdir(BuildDir, 0755)
@@ -41,7 +42,9 @@ func createBaseImage(image_name string, rootfs_verfication bool, bootcache bool,
 	os.Mkdir(statefulDir, 0755)
 	os.Mkdir(espDir, 0755)
 
-	buildGptImage(output_dev, ImageType)
+	if err := buildGptImage(filepath.Dir(output_dev), ImageType); err != nil {
+		return err
+	}
 
 	if err := mount_image(output_dev, rootDir, statefulDir, espDir); err != nil {
 		return err
@@ -59,7 +62,7 @@ func createBaseImage(image_name string, rootfs_verfication bool, bootcache bool,
 		return err
 	}
 
-	
+
 
 
 	return nil
@@ -67,6 +70,20 @@ func createBaseImage(image_name string, rootfs_verfication bool, bootcache bool,
 }
 
 func main() {
-	execute("echo", "hello")
-	execute("id")
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	/*out, error, err := execute(os.Args[1], os.Args[1:]...)
+	fmt.Println(out, error)
+	if err != nil {
+
+		log.Fatal(err)
+	}
+
+	out, _, _ = execute("id")
+	fmt.Println(out)
+	*/
+
+	if err := createBaseImage(os.Args[1], os.Args[2]); err != nil {
+		log.Fatalf("LOL: %v", err)
+	}
 }
