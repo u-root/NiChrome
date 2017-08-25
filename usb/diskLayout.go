@@ -351,15 +351,62 @@ func mkFS(imageFile, imageType, partNum string) error {
 	case "fat", "vfat":
 		mkfs("vfat", "-n " + FSLabel, partDev, FSOptions)
 	case "squashfs":
-		squashDir := ioutil.TempDir()
+		squashDir, err := ioutil.TempDir("/tmp","")
+		if err != nil {
+			return err
+		}
+		squashFile, err := ioutil.TempFile("/tmp", "")
+		if err != nil {
+			return err
+		}
 
-		regexp.Compile()
+		os.Chmod(squashDir, 0755)
+
+		if _, _, err := execute("mksquashfs", squashDir, squashFile.Name(), "-noappend", "-all-root", "-no-progress", "-no-recovery", FSOptions); err != nil {
+			return err
+		}
+
+		if _, _, err := execute("dd", "if="+ squashFile, "of=" + partDev,"bs=4096", "status=none"); err != nil {
+			return err
+		}
+
+		if _, _, err := mkfs(FSFormat, "-b " + FSBytes, "-d single", "-m single", "-M", "-L " + FSLabel, "-O " + FSOptions, partDev); err != nil {
+			return err
+		}
+
+		if err := os.Remove(squashFile.Name()); err != nil {
+			return err
+		}
+
+	default:
+		return fmt.Errorf("Not a recognized file type: %s", FSFormat)
 	}
 
+	mountDir, err := ioutil.TempDir("/tmp", "")
+	if err != nil {
+		return err
+	}
 
+	FSMount(partDev, mountDir, FSFormat, "rw")
+	if err := os.Chown(mountDir, 0, 0); err != nil {
+		return err
+	}
 
+	if FSLabel == "STATE" {
+		os.MkdirAll(filepath.Join(mountDir, "dev_image"), 0755)
+		os.MkdirAll(filepath.Join(mountDir, "var_overlay"), 0755)
+	}
 
+	if FSType == "rootfs" {
+		os.MkdirAll(filepath.Join(mountDir, "mnt", "stateful_partition"), 0755)
+		os.MkdirAll(filepath.Join(mountDir, "usr", "local"), 0755)
+		os.MkdirAll(filepath.Join(mountDir, "usr", "share", "oem"), 0755)
+		os.MkdirAll(filepath.Join(mountDir, "var"), 0755)
+	}
 
+	FSUmount(partDev, mountDir, FSFormat, FSOptions)
+	FSRemoveMountpoint(mountDir)
+	
 }
 
 func buildGptImage(outdev string, diskLayout string) error {
