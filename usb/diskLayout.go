@@ -10,9 +10,11 @@ import (
 	"log"
 	"strconv"
 	"fmt"
+	"syscall"
 )
 
 const (
+	PartitionScriptPath = "usr/sbin/write_gpt.sh"
 	diskLayoutPath = "./legacy_disk_layout.json"
 )
 func cgpt(args ...string) (string, string, error){
@@ -22,8 +24,20 @@ func cgpt(args ...string) (string, string, error){
 func mkfs(format string, args ...string) (string, string, error) {
 	return execute("mkfs." + format, args...)
 }
-func checkValidLayout(imageType string) {
-	cgpt("layout", imageType, diskLayoutPath)
+
+
+func getPartitions(imageType string) (int, error) {
+	out, _, err := cgpt("readpartitionnums", imageType, diskLayoutPath )
+	if err != nil {
+		return 0, err
+	}
+
+	val, err := strconv.Atoi(out)
+	if err != nil {
+		return 0, err
+	}
+
+	return val, nil
 }
 
 func writePartitionScript(image_type string, path string) error {
@@ -387,7 +401,7 @@ func mkFS(imageFile, imageType, partNum string) error {
 		return err
 	}
 
-	FSMount(partDev, mountDir, FSFormat, "rw")
+	FSMount(partDev, mountDir, FSFormat, syscall.MS_RDONLY)
 	if err := os.Chown(mountDir, 0, 0); err != nil {
 		return err
 	}
@@ -405,8 +419,8 @@ func mkFS(imageFile, imageType, partNum string) error {
 	}
 
 	FSUmount(partDev, mountDir, FSFormat, FSOptions)
-	FSRemoveMountpoint(mountDir)
-	
+	os.RemoveAll(mountDir)
+
 }
 
 func buildGptImage(outdev string, diskLayout string) error {
@@ -422,5 +436,18 @@ func buildGptImage(outdev string, diskLayout string) error {
 		return err
 	}
 
+	partitions, err := getPartitions(diskLayout)
+	if err != nil {
+		return err
+	}
 
+	for i := 1; i <= partitions; i++ {
+		mkFS(outdev, diskLayout, strconv.Itoa(i))
+	}
+
+	if _, _, err := execute("cgpt", "add", "-i 2", "-S 1", outdev); err != nil {
+		return err
+	}
+
+	return nil
 }
