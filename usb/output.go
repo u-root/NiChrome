@@ -6,25 +6,34 @@ import (
 )
 
 const (
-	HEADER    = "\033[95m"
-	OKBLUE    = "\033[94m"
 	OKGREEN   = "\033[32m"
 	WARNING   = "\033[33m"
 	FAIL      = "\033[31m"
 	ENDC      = "\033[0m"
 	BOLD      = "\033[1m"
-	UNDERLINE = "\033[4m"
 )
 
-func info(output string) {
-	fmt.Println(OKGREEN + BOLD + "INFO: " + output + ENDC)
+func info(output ...interface{}) {
+	for _, v := range output {
+		fmt.Print(OKGREEN + BOLD + "INFO: ")
+		fmt.Print(v)
+		fmt.Println(ENDC)
+	}
 }
 
-func fatal(output string) {
-	fmt.Println(FAIL + BOLD + "ERROR: " + output + ENDC)
+func fatal(output ...interface{}) {
+	for _, v := range output {
+		fmt.Print(FAIL + BOLD + "ERROR: ")
+		fmt.Print(v)
+		fmt.Println(ENDC)
+	}
 	os.Exit(1)
 }
 
-func warning(output string) {
-	fmt.Println(WARNING + BOLD + "WARNING: " + output + ENDC)
+func warning(output ...interface{}) {
+	for _, v := range output {
+		fmt.Print(WARNING + BOLD + "WARNING: ")
+		fmt.Print(v)
+		fmt.Println(ENDC)
+	}
 }
