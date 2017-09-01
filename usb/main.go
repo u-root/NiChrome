@@ -1,8 +1,7 @@
 package main
 
 import (
-	os "os"
-	"fmt"
+	"os"
 	"path/filepath"
 	"log"
 )
@@ -15,73 +14,65 @@ const (
 	ImageType   = "usb"
 )
 
-func mount_image(args ...string) error {
-	_, error, err := execute("mount_image.sh", args...)
+func mountImage(output_dev, root, stateful string) error {
 
-	if err != nil {
+	os.MkdirAll(root, 755)
+	os.MkdirAll(stateful, 755)
+
+	if err := FSMount(output_dev + "1", stateful, "ext4", 0); err != nil {
+		log.Fatal(err)
 		return err
 	}
 
-	if len(error) != 0 {
-		return fmt.Errorf(error)
+	return FSMount(output_dev + "3", root, "ext4", 0)
+}
+
+func umountImage(root, stateful string) error {
+
+	if err := FSUmount(root); err != nil {
+
+		return err
 	}
 
-	return nil
+	return FSUmount(stateful)
 }
 
 func createBaseImage(image_name string, output_dev string) error {
-	// checkValidLayout(image_name)
 	info("Using image type " + image_name)
 	os.Mkdir(BuildDir, 0755)
 
 	rootDir := BuildDir + "/rootfs"
 	statefulDir := BuildDir + "/stateful"
-	espDir := BuildDir + "/esp"
 
-	os.Mkdir(rootDir, 0755)
-	os.Mkdir(statefulDir, 0755)
-	os.Mkdir(espDir, 0755)
+	os.MkdirAll(rootDir, 0755)
+	os.MkdirAll(statefulDir, 0755)
 
-	if err := buildGptImage(filepath.Dir(output_dev), ImageType); err != nil {
+	if err := buildGptImage(output_dev, ImageType); err != nil {
 		return err
 	}
 
-	if err := mount_image(output_dev, rootDir, statefulDir, espDir); err != nil {
+	if err := mountImage(output_dev, rootDir, statefulDir); err != nil {
 		return err
 	}
 
-	// Insert pubkey?
-	// Write boot desc not neccesary if script is run from start to finish.
-	// Write partition scripts
 
-	if err := writePartitionScript(ImageType, filepath.Join(rootDir, PartitionScriptPath)); err !=  nil {
-		return err
-	}
+	// TODO (@laconicpneumonic)
+	// Copy U-Root Filesystem to rootfs
+
 
 	if err := os.Chown(filepath.Join(rootDir, PartitionScriptPath), 0, 0); err != nil {
 		return err
 	}
 
+	// TODO (@laconicpneumonic)
+	// Add DM Verity hashes
 
-
-
+	umountImage(rootDir, statefulDir)
 	return nil
-
 }
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
-	/*out, error, err := execute(os.Args[1], os.Args[1:]...)
-	fmt.Println(out, error)
-	if err != nil {
-
-		log.Fatal(err)
-	}
-
-	out, _, _ = execute("id")
-	fmt.Println(out)
-	*/
 
 	if err := createBaseImage(os.Args[1], os.Args[2]); err != nil {
 		log.Fatalf("LOL: %v", err)
