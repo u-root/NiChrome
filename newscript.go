@@ -72,7 +72,7 @@ func setup() error {
 	get = append(get, packageList...)
 	cmd := exec.Command("sudo", get...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		return err
 	}
 	/*err = blankBootstick()
@@ -235,35 +235,28 @@ func unpackKernel() error {
 	return nil
 }
 
-//TODO depth 1 error/issues
-func findVbutil() error {
-	path, err := exec.LookPath("futility")
-	if err != nil {
-		log.Fatal("Make the chromium package to access Futility")
-	}
-	fmt.Printf("futility is available at %s\n", path)
-	return nil
-}
-
 func buildVbutil() error {
 	fmt.Printf("-------- Building in Vbutil\n")
+	if *fetch {
 	cmd := exec.Command("git", "clone", "https://chromium.googlesource.com/chromiumos/platform/vboot_reference")
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	err := cmd.Run()
 	if err != nil {
 		fmt.Printf("didn't get chromium repo")
 		return err
 	}
-	return nil
-	cmd = exec.Command("git", "checkout", "3f3a496a23088731e4ab5654b02fbc13a6881c65")
-	err = cmd.Run()
-	if err != nil {
+	}
+	cmd := exec.Command("git", "checkout", "3f3a496a23088731e4ab5654b02fbc13a6881c65")
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	cmd.Dir = "vboot_reference"
+	if err := cmd.Run(); err != nil {
 		fmt.Printf("couldn't checkout the right branch")
 		return err
 	}
-	return nil
 	cmd = exec.Command("make", "-j64")
-	err = cmd.Run()
-	if err != nil {
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	cmd.Dir = "vboot_reference"
+	if err := cmd.Run(); err != nil {
 		fmt.Printf("Make failed. Please try to manually install vbutil")
 		return err
 	}
@@ -274,7 +267,6 @@ func buildVbutil() error {
 func vbutilIt() error {
 	fmt.Printf("-------- VBUTILING\n")
 	buildVbutil()
-	findVbutil()
 	fmt.Printf("-------- VBUTILING  contd. \n")
 	newKern := "newKern"
 	if err := ioutil.WriteFile("config.txt", []byte("loglevel=7"), 0777); err != nil {
@@ -285,7 +277,7 @@ func vbutilIt() error {
 	}
 	bzImage := fmt.Sprintf("%s/arch/x86/boot/bzImage", linuxVersion)
 	fmt.Printf("Bz image is located at %s \n", bzImage)
-	cmd := exec.Command("futility", "vbutil_kernel", "--pack", newKern, "--keyblock", "/usr/share/vboot/devkeys/kernel.keyblock", "--signprivate", "/usr/share/vboot/devkeys/kernel_data_key.vbprivk", "--version", "1", "--vmlinuz", bzImage, "--bootloader", "nocontent.efi", "--config", "config.txt", "--arch", "x86")
+	cmd := exec.Command("./vboot_reference/build/futility/futility", "vbutil_kernel", "--pack", newKern, "--keyblock", "/usr/share/vboot/devkeys/kernel.keyblock", "--signprivate", "/usr/share/vboot/devkeys/kernel_data_key.vbprivk", "--version", "1", "--vmlinuz", bzImage, "--bootloader", "nocontent.efi", "--config", "config.txt", "--arch", "x86")
 	stdoutStderr, err := cmd.CombinedOutput()
 	fmt.Printf("%s\n", stdoutStderr)
 	if err != nil {
