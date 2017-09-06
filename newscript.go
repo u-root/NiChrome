@@ -24,6 +24,7 @@ import (
 
 var (
 	fetch         = flag.Bool("fetch", true, "Fetch all the things we need")
+	keys          = flag.String("keys", "vboot_reference/tests/devkeys", "where the keys live")
 	kernelVersion = "4.12.7"
 	workingDir    = ""
 	linuxVersion  = "linux_stable"
@@ -214,12 +215,12 @@ func kernelGet() error {
 
 func unpackKernel() error {
 	if err := os.Symlink("/tmp/initramfs.linux_amd64.cpio", fmt.Sprintf("%s/initramfs.linux_amd64.cpio", "linux-stable")); err != nil {
-		return err
+		fmt.Printf("[warning only] Error creating symlink for initramfs: %v", err)
 	}
 	// NOTE: don't get confused. This means that .config in linux-stable
 	// points to CONFIG, i.e. where we are.
 	if err := os.Symlink("../CONFIG", "linux-stable/.config"); err != nil {
-		return err
+		fmt.Printf("[warning only] Error creating symlink for .config: %v", err)
 	}
 
 	cmd := exec.Command("make", "--directory", "linux-stable", "-j64")
@@ -275,9 +276,11 @@ func vbutilIt() error {
 	if err := ioutil.WriteFile("nocontent.efi", []byte("no content"), 0777); err != nil {
 		return err
 	}
-	bzImage := fmt.Sprintf("%s/arch/x86/boot/bzImage", linuxVersion)
+	bzImage := "linux-stable/arch/x86/boot/bzImage"
 	fmt.Printf("Bz image is located at %s \n", bzImage)
-	cmd := exec.Command("./vboot_reference/build/futility/futility", "vbutil_kernel", "--pack", newKern, "--keyblock", "/usr/share/vboot/devkeys/kernel.keyblock", "--signprivate", "/usr/share/vboot/devkeys/kernel_data_key.vbprivk", "--version", "1", "--vmlinuz", bzImage, "--bootloader", "nocontent.efi", "--config", "config.txt", "--arch", "x86")
+	keyblock := filepath.Join(*keys, "kernel.keyblock")
+	sign := filepath.Join(*keys, "kernel_data_key.vbprivk")
+	cmd := exec.Command("./vboot_reference/build/futility/futility", "vbutil_kernel", "--pack", newKern, "--keyblock", keyblock, "--signprivate", sign, "--version", "1", "--vmlinuz", bzImage, "--bootloader", "nocontent.efi", "--config", "config.txt", "--arch", "x86")
 	stdoutStderr, err := cmd.CombinedOutput()
 	fmt.Printf("%s\n", stdoutStderr)
 	if err != nil {
@@ -303,13 +306,13 @@ func dd() error {
 			break
 		}
 	}
-	fmt.Printf("Running dd to put the new kernel onto the desired location on the usb.")
-	ofLocation := fmt.Sprintf("of%s", location)
-	cmd := exec.Command("sudo", "dd", "if=newKern", ofLocation)
-	err := cmd.Run()
+	fmt.Printf("Running dd to put the new kernel onto the desired location on the usb.\n")
+	args := []string{"dd", "if=newKern", "of=" + location}
+	msg, err := exec.Command("sudo", args...).CombinedOutput()
 	if err != nil {
-		return err
+		return fmt.Errorf("dd %v failed: %v: %v", args, string(msg), err)
 	}
+	fmt.Printf("%v ran ok\n", args)
 	return nil
 }
 
@@ -356,6 +359,6 @@ func main() {
 		fmt.Printf("fail error is : %v", err)
 		os.Exit(1)
 	}
-	fmt.Printf("execution completed successfully")
+	fmt.Printf("execution completed successfully\n")
 
 }
