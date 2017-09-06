@@ -6,9 +6,10 @@ package main
 //TODO check if it is a device
 //TODO append method name to error
 //TODO proper output channels when you run commands
-//TODO in the newest kernel pull the stable one if it fails, then go back to what was there, see the notes on the PR) 
+//TODO in the newest kernel pull the stable one if it fails, then go back to what was there, see the notes on the PR)
 import (
-	
+	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -16,8 +17,6 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
-	"bytes"
-	"errors"
 	"strconv"
 	"strings"
 )
@@ -28,12 +27,10 @@ var linuxVersion = "linux_stable"
 var homeDir = ""
 var totalSteps = 7
 
-
-
-func cp(inputLoc string, outputLoc string) error{
+func cp(inputLoc string, outputLoc string) error {
 	if _, err := os.Stat(inputLoc); err != nil {
-		return err	
-	} 
+		return err
+	}
 	fileContent, err := ioutil.ReadFile(inputLoc)
 	if err != nil {
 		return err
@@ -42,8 +39,8 @@ func cp(inputLoc string, outputLoc string) error{
 	return nil
 }
 
-func tildeExpand(input string) string{
-	if strings.Contains(input, "~"){
+func tildeExpand(input string) string {
+	if strings.Contains(input, "~") {
 		input = strings.Replace(input, "~", homeDir, 1)
 		fmt.Printf("Full filepath is : %s", input)
 	}
@@ -116,17 +113,18 @@ func blankBootstick() error {
 		}
 	}
 	fmt.Printf("Running dd to put the new image onto the desired location. \n")
-	if err := cp(imageLoc, location); err != nil{
-		return err	
+	if err := cp(imageLoc, location); err != nil {
+		return err
 	}
 	return nil
 }
 
 func cleanup() error {
-	filesToRemove := [...]string{linuxVersion, "NiChrome", "vboot_reference"}
+	filesToRemove := [...]string{linuxVersion, "linux_stable", "NiChrome", "vboot_reference"}
 	fmt.Printf("-------- Removing problematic files %v\n", filesToRemove)
 	for _, file := range filesToRemove {
 		if _, err := os.Stat(file); err != nil {
+			fmt.Printf("error removing file/dir %s\n because of %v", file, err)
 			continue
 		}
 		err := os.RemoveAll(file)
@@ -161,11 +159,17 @@ func goCompatibility() error {
 
 func goGet() error {
 	fmt.Printf("--------Getting u-root \n")
-	cmd := exec.Command("git", "clone", "--depth", "1","https://github.com/u-root/u-root.git")
+	cmd := exec.Command("sh", "-c", "export", "GOPATH=\"$HOME/go\"")
 	err := cmd.Run()
 	if err != nil {
 		return err
 	}
+	fmt.Printf("exported \n")
+	cmd = exec.Command("go", "get", "github.com/u-root/u-root/")
+	err = cmd.Run()
+	/*if err != nil {
+		return err
+	}*/
 	fmt.Printf("--------Got u-root \n")
 	gopath := fmt.Sprintf("GOPATH=%s/go", homeDir)
 	bbpath := fmt.Sprintf("%s/go/src/github.com/u-root/u-root/bb/bb", homeDir)
@@ -174,7 +178,6 @@ func goGet() error {
 	if err != nil {
 		return err
 	}
-
 	cmd = exec.Command(gopath, bbpath)
 	err = cmd.Run()
 	if err != nil {
@@ -188,13 +191,12 @@ func goGet() error {
 	return nil
 }
 
-
 func kernelGet() error {
 	fmt.Printf("-------- Getting the kernel \n")
-	cmd := exec.Command("git", "clone", "--depth", "1","-b", "v4.12.7", "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git")
+	cmd := exec.Command("git", "clone", "-b", "v4.12.7", "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git")
 	err := cmd.Run()
 	if err != nil {
-		fmt.Printf("didn't clone kernel")
+		fmt.Printf("didn't clone kernel %v", err)
 		return err
 	}
 	return nil
@@ -202,18 +204,33 @@ func kernelGet() error {
 
 func unpackKernel() error {
 	fmt.Printf("-------- Unpack the kernel\n")
-	cmd := exec.Command("git", "clone", "--depth", "1", "https://github.com/u-root/NiChrome.git")
+	cmd := exec.Command("git", "clone", "https://github.com/u-root/NiChrome.git")
 	err := cmd.Run()
 	if err != nil {
 		fmt.Printf("didn't clone Nichrome")
 		return err
 	}
-	if err = os.Symlink("NiChrome/CONFIG", fmt.Sprintf("%s/.config", linuxVersion)); err != nil {
+	fmt.Printf("-------- Copy important filesl\n")
+	cmd = exec.Command("cp", "/tmp/initramfs.linux_amd64.cpio", fmt.Sprintf("%s/", linuxVersion))
+	err = cmd.Run()
+	if err != nil {
 		return err
 	}
-	if err = os.Symlink("/tmp/initramfs.linux_amd64.cpio", fmt.Sprintf("%s/", linuxVersion)); err != nil {
+
+	cmd = exec.Command("cp", "NiChrome/CONFIG", fmt.Sprintf("%s/.config", linuxVersion))
+	err = cmd.Run()
+	if err != nil {
 		return err
 	}
+
+	/*
+		if err := os.Symlink("/tmp/initramfs.linux_amd64.cpio", fmt.Sprintf("%s%s/initramfs.linux_amd64.cpio", workingDir, linuxVersion) ); err != nil {
+			return err
+		}
+		if err := os.Symlink("NiChrome/CONFIG", fmt.Sprintf("%s%s/.config",workingDir, linuxVersion)); err != nil {
+			return err
+		}*/
+
 	fmt.Printf("pwd before make is %s\n", workingDir)
 	cmd = exec.Command("make", "--directory", linuxVersion, "-j64")
 	err = cmd.Run()
@@ -227,6 +244,7 @@ func unpackKernel() error {
 	return nil
 }
 
+//TODO depth 1 error/issues
 func findVbutil() error {
 	path, err := exec.LookPath("futility")
 	if err != nil {
@@ -238,7 +256,7 @@ func findVbutil() error {
 
 func buildVbutil() error {
 	fmt.Printf("-------- Building in Vbutil\n")
-	cmd := exec.Command("git", "clone", "--depth", "1", "https://chromium.googlesource.com/chromiumos/platform/vboot_reference")
+	cmd := exec.Command("git", "clone", "https://chromium.googlesource.com/chromiumos/platform/vboot_reference")
 	err := cmd.Run()
 	if err != nil {
 		fmt.Printf("didn't get chromium repo")
@@ -283,7 +301,7 @@ func vbutilIt() error {
 		return err
 	}
 	if err = dd(); err != nil {
-		return err	
+		return err
 	}
 	return nil
 }
@@ -313,15 +331,10 @@ func dd() error {
 }
 
 //TODO : final Error
+//TODO: absolute filepath things
 func allFunc() error {
-	cp("config.txt", "linux-stable/newfilw")
-	if err := cp("NiChrome/CONFIG", ".config"); err != nil {
-		return err
-	}
-	if err := cp("/tmp/initramfs.linux_amd64.cpio", "."); err != nil {
-		return err
-	}
-	/*if err := cleanup(); err != nil {
+
+	if err := cleanup(); err != nil {
 		log.Printf("ERROR: %v\n", err)
 	}
 	if err := setup(); err != nil {
@@ -330,21 +343,19 @@ func allFunc() error {
 	if err := goCompatibility(); err != nil {
 		log.Printf("ERROR: %v\n", err)
 	}
-	if err := goGet(); err != nil {
+	//error ridden
+	/*if err := goGet(); err != nil {
 		log.Printf("ERROR: %v\n", err)
-	}
+	}*/
 	if err := kernelGet(); err != nil {
 		log.Printf("ERROR: %v\n", err)
 	}
 	if err := unpackKernel(); err != nil {
 		log.Printf("ERROR: %v\n", err)
 	}
-/*          
-
-
 	if err := vbutilIt(); err != nil {
 		log.Printf("ERROR: %v\n", err)
-	}*/
+	}
 	return nil
 }
 
