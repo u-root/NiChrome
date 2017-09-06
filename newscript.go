@@ -93,13 +93,13 @@ func blankBootstick() error{
 
 
 func cleanup() error {	
-	filesToRemove := [...]string{linuxVersion, ".git", "NiChrome", "vboot_reference"}
+	filesToRemove := [...]string{linuxVersion, "NiChrome", "vboot_reference"}
 	fmt.Printf("-------- Removing problematic files %v\n", filesToRemove)
 	for _,file := range filesToRemove{
 		if _, err := os.Stat(file); err != nil {
 			continue		
 		} 
-		cmd15 := exec.Command("sudo", "rm", "-r", file)
+		cmd15 := os.Remove(file)
 		err := cmd15.Run()
 		if err != nil {
 			return err
@@ -309,7 +309,7 @@ func buildVbutil() error{
 	cmd10 := exec.Command("make", "-j64")
 	err = cmd10.Run()
 	if err != nil {
-		fmt.Printf("Make failed. Please try to manually install")
+		fmt.Printf("Make failed. Please try to manually install vbutil")
 		return err
 	}
 	return nil
@@ -344,7 +344,7 @@ func vbutilIt() error {
 func dd() error{
 	var location = "/dev/sda2"
 	for true {
-		fmt.Printf("Where do you want to put this kernel (/dev/sda2?)")	
+		fmt.Printf("Where do you want to put this kernel (%s)", location)	
 		_, err := fmt.Scanf("%s",&location)
 		if err != nil {
 			return err	
