@@ -93,6 +93,7 @@ func blankBootstick() error{
 
 
 func cleanup() error {	
+
 	filesToRemove := [...]string{linuxVersion, "NiChrome", "vboot_reference"}
 	fmt.Printf("-------- Removing problematic files %v\n", filesToRemove)
 	for _,file := range filesToRemove{
@@ -100,6 +101,7 @@ func cleanup() error {
 			continue		
 		} 
 		err := os.Remove(file)
+
 		if err != nil {
 			return err
 		}
