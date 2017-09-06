@@ -120,7 +120,7 @@ func blankBootstick() error {
 }
 
 func cleanup() error {
-	filesToRemove := [...]string{linuxVersion, "linux_stable", "NiChrome", "vboot_reference"}
+	filesToRemove := [...]string{linuxVersion, "linux-stable", "NiChrome", "vboot_reference"}
 	fmt.Printf("-------- Removing problematic files %v\n", filesToRemove)
 	for _, file := range filesToRemove {
 		if _, err := os.Stat(file); err != nil {
@@ -193,11 +193,11 @@ func goGet() error {
 }
 
 func kernelGet() error {
-	fmt.Printf("-------- Getting the kernel \n")
-	cmd := exec.Command("git", "clone", "-b", "v4.12.7", "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git")
-	err := cmd.Run()
+	var args =[] string{"clone", "-b", "v4.12.7", "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"}
+	fmt.Printf("-------- Getting the kernel via git %v\n", args)
+	m, err := exec.Command("git", args...).CombinedOutput()
 	if err != nil {
-		fmt.Printf("didn't clone kernel %v", err)
+		fmt.Printf("didn't clone kernel %v: %v", string(m), err)
 		return err
 	}
 	return nil
