@@ -341,8 +341,10 @@ func allFunc() error {
 	if err := setup(); err != nil {
 		log.Printf("ERROR: %v\n", err)
 	}
-	if err := goCompatibility(); err != nil {
-		log.Printf("ERROR: %v\n", err)
+	if false {
+		if err := goCompatibility(); err != nil {
+			log.Printf("ERROR: %v\n", err)
+		}
 	}
 	//error ridden
 	/*if err := goGet(); err != nil {
