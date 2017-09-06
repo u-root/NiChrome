@@ -99,8 +99,7 @@ func cleanup() error {
 		if _, err := os.Stat(file); err != nil {
 			continue		
 		} 
-		cmd15 := os.Remove(file)
-		err := cmd15.Run()
+		err := os.Remove(file)
 		if err != nil {
 			return err
 		}
