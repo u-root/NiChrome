@@ -21,11 +21,15 @@ import (
 	"strings"
 )
 
-var kernelVersion = "4.12.7"
-var workingDir = ""
-var linuxVersion = "linux_stable"
-var homeDir = ""
-var totalSteps = 7
+var (
+	kernelVersion = "4.12.7"
+	workingDir    = ""
+	linuxVersion  = "linux_stable"
+	homeDir       = ""
+	totalSteps    = 7
+	packageList   = []string{
+		"git", "golang", "build-essential", "git-core", "gitk", "git-gui", "subversion", "curl", "python2.7", "libyaml-dev", "liblzma-dev"}
+)
 
 func cp(inputLoc string, outputLoc string) error {
 	if _, err := os.Stat(inputLoc); err != nil {
@@ -61,9 +65,11 @@ func setup() error {
 	}
 	homeDir = usr.HomeDir
 	fmt.Printf("Home dir is %s\n", homeDir)
-	fmt.Printf("Using apt-get to get important packages. \n ")
-	cmd := exec.Command("sudo", "apt-get", "install", "git", "golang", "build-essential", "git-core", "gitk", "git-gui", "subversion", "curl", "python2.7", "libyaml-dev", "liblzma-dev")
-	err = cmd.Run()
+	fmt.Printf("Using apt-get to get %v\n", packageList)
+	get := []string{"apt-get", "install"}
+	get = append(get, packageList...)
+	cmd := exec.Command("sudo", get...)
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err != nil {
 		return err
 	}
@@ -193,11 +199,12 @@ func goGet() error {
 }
 
 func kernelGet() error {
-	var args =[] string{"clone", "-b", "v4.12.7", "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"}
+	var args = []string{"clone", "--depth", "1", "-b", "v4.12.7", "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"}
 	fmt.Printf("-------- Getting the kernel via git %v\n", args)
-	m, err := exec.Command("git", args...).CombinedOutput()
-	if err != nil {
-		fmt.Printf("didn't clone kernel %v: %v", string(m), err)
+	cmd := exec.Command("git", args...)
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("didn't clone kernel %v", err)
 		return err
 	}
 	return nil
