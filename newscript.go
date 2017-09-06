@@ -238,13 +238,13 @@ func unpackKernel() error {
 func buildVbutil() error {
 	fmt.Printf("-------- Building in Vbutil\n")
 	if *fetch {
-	cmd := exec.Command("git", "clone", "https://chromium.googlesource.com/chromiumos/platform/vboot_reference")
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	err := cmd.Run()
-	if err != nil {
-		fmt.Printf("didn't get chromium repo")
-		return err
-	}
+		cmd := exec.Command("git", "clone", "https://chromium.googlesource.com/chromiumos/platform/vboot_reference")
+		cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+		err := cmd.Run()
+		if err != nil {
+			fmt.Printf("didn't get chromium repo")
+			return err
+		}
 	}
 	cmd := exec.Command("git", "checkout", "3f3a496a23088731e4ab5654b02fbc13a6881c65")
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
