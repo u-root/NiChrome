@@ -10,6 +10,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -22,6 +23,7 @@ import (
 )
 
 var (
+	fetch         = flag.Bool("fetch", true, "Fetch all the things we need")
 	kernelVersion = "4.12.7"
 	workingDir    = ""
 	linuxVersion  = "linux_stable"
@@ -211,41 +213,22 @@ func kernelGet() error {
 }
 
 func unpackKernel() error {
-	fmt.Printf("-------- Unpack the kernel\n")
-	cmd := exec.Command("git", "clone", "https://github.com/u-root/NiChrome.git")
+	if err := os.Symlink("/tmp/initramfs.linux_amd64.cpio", fmt.Sprintf("%s/initramfs.linux_amd64.cpio", "linux-stable")); err != nil {
+		return err
+	}
+	// NOTE: don't get confused. This means that .config in linux-stable
+	// points to CONFIG, i.e. where we are.
+	if err := os.Symlink("../CONFIG", "linux-stable/.config"); err != nil {
+		return err
+	}
+
+	cmd := exec.Command("make", "--directory", "linux-stable", "-j64")
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	err := cmd.Run()
 	if err != nil {
-		fmt.Printf("didn't clone Nichrome")
 		return err
 	}
-	fmt.Printf("-------- Copy important filesl\n")
-	cmd = exec.Command("cp", "/tmp/initramfs.linux_amd64.cpio", fmt.Sprintf("%s/", linuxVersion))
-	err = cmd.Run()
-	if err != nil {
-		return err
-	}
-
-	cmd = exec.Command("cp", "NiChrome/CONFIG", fmt.Sprintf("%s/.config", linuxVersion))
-	err = cmd.Run()
-	if err != nil {
-		return err
-	}
-
-	/*
-		if err := os.Symlink("/tmp/initramfs.linux_amd64.cpio", fmt.Sprintf("%s%s/initramfs.linux_amd64.cpio", workingDir, linuxVersion) ); err != nil {
-			return err
-		}
-		if err := os.Symlink("NiChrome/CONFIG", fmt.Sprintf("%s%s/.config",workingDir, linuxVersion)); err != nil {
-			return err
-		}*/
-
-	fmt.Printf("pwd before make is %s\n", workingDir)
-	cmd = exec.Command("make", "--directory", linuxVersion, "-j64")
-	err = cmd.Run()
-	if err != nil {
-		return err
-	}
-	if _, err := os.Stat(filepath.Join(linuxVersion, "/arch/x86/boot/bzImage")); err != nil {
+	if _, err := os.Stat(filepath.Join("linux-stable", "/arch/x86/boot/bzImage")); err != nil {
 		return err
 	}
 	fmt.Printf("bzImage created")
@@ -342,8 +325,10 @@ func dd() error {
 //TODO: absolute filepath things
 func allFunc() error {
 
-	if err := cleanup(); err != nil {
-		log.Printf("ERROR: %v\n", err)
+	if *fetch {
+		if err := cleanup(); err != nil {
+			log.Printf("ERROR: %v\n", err)
+		}
 	}
 	if err := setup(); err != nil {
 		log.Printf("ERROR: %v\n", err)
@@ -357,8 +342,10 @@ func allFunc() error {
 	/*if err := goGet(); err != nil {
 		log.Printf("ERROR: %v\n", err)
 	}*/
-	if err := kernelGet(); err != nil {
-		log.Printf("ERROR: %v\n", err)
+	if *fetch {
+		if err := kernelGet(); err != nil {
+			log.Printf("ERROR: %v\n", err)
+		}
 	}
 	if err := unpackKernel(); err != nil {
 		log.Printf("ERROR: %v\n", err)
@@ -370,6 +357,7 @@ func allFunc() error {
 }
 
 func main() {
+	flag.Parse()
 	//all paramters: name of new kernel, location for dd, kernel version,
 	fmt.Printf("Using kernel default as 4.12.7\n")
 	if err := allFunc(); err != nil {
