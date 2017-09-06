@@ -124,8 +124,9 @@ func cleanup() error {
 	fmt.Printf("-------- Removing problematic files %v\n", filesToRemove)
 	for _, file := range filesToRemove {
 		if _, err := os.Stat(file); err != nil {
-			fmt.Printf("error removing file/dir %s\n because of %v", file, err)
-			continue
+			if os.IsNotExist(err) {
+				continue
+			}
 		}
 		err := os.RemoveAll(file)
 		if err != nil {
