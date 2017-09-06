@@ -169,14 +169,9 @@ func goCompatibility() error {
 
 func goGet() error {
 	fmt.Printf("--------Getting u-root \n")
-	cmd := exec.Command("sh", "-c", "export", "GOPATH=\"$HOME/go\"")
+	cmd := exec.Command("go", "get", "github.com/u-root/u-root/")
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	err := cmd.Run()
-	if err != nil {
-		return err
-	}
-	fmt.Printf("exported \n")
-	cmd = exec.Command("go", "get", "github.com/u-root/u-root/")
-	err = cmd.Run()
 	/*if err != nil {
 		return err
 	}*/
@@ -184,11 +179,13 @@ func goGet() error {
 	gopath := fmt.Sprintf("GOPATH=%s/go", homeDir)
 	bbpath := fmt.Sprintf("%s/go/src/github.com/u-root/u-root/bb/bb", homeDir)
 	cmd = exec.Command("go", "build", "bbpath")
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	err = cmd.Run()
 	if err != nil {
 		return err
 	}
 	cmd = exec.Command(gopath, bbpath)
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	err = cmd.Run()
 	if err != nil {
 		return err
