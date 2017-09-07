@@ -23,6 +23,10 @@ import (
 )
 
 var (
+	configTxt = []byte(`loglevel=7
+init=/init
+rootwait
+`)
 	fetch         = flag.Bool("fetch", true, "Fetch all the things we need")
 	keys          = flag.String("keys", "vboot_reference/tests/devkeys", "where the keys live")
 	kernelVersion = "4.12.7"
@@ -271,7 +275,7 @@ func vbutilIt() error {
 	buildVbutil()
 	fmt.Printf("-------- VBUTILING  contd. \n")
 	newKern := "newKern"
-	if err := ioutil.WriteFile("config.txt", []byte("loglevel=7"), 0777); err != nil {
+	if err := ioutil.WriteFile("config.txt", configTxt, 0644); err != nil {
 		return err
 	}
 	if err := ioutil.WriteFile("nocontent.efi", []byte("no content"), 0777); err != nil {
