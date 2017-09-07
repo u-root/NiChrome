@@ -35,6 +35,11 @@ var (
 )
 
 func cp(inputLoc string, outputLoc string) error {
+	// Don't check for an error, there are all kinds of
+	// reasons a remove can fail even if the file is
+	// writeable
+	os.Remove(outputLoc)
+
 	if _, err := os.Stat(inputLoc); err != nil {
 		return err
 	}
@@ -42,8 +47,7 @@ func cp(inputLoc string, outputLoc string) error {
 	if err != nil {
 		return err
 	}
-	ioutil.WriteFile(outputLoc, fileContent, 0777)
-	return nil
+	return ioutil.WriteFile(outputLoc, fileContent, 0777)
 }
 
 func tildeExpand(input string) string {
@@ -216,7 +220,7 @@ func unpackKernel() error {
 	}
 	// NOTE: don't get confused. This means that .config in linux-stable
 	// points to CONFIG, i.e. where we are.
-	if err := os.Symlink("../CONFIG", "linux-stable/.config"); err != nil {
+	if err := cp("CONFIG", "linux-stable/.config"); err != nil {
 		fmt.Printf("[warning only] Error creating symlink for .config: %v", err)
 	}
 
