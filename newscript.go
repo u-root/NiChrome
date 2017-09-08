@@ -145,7 +145,7 @@ func goGet() error {
 	}
 	// We need to run bb in the bb directory. Kind of a flaw in its
 	// operation. Sorry.
-	cmd = exec.Command("./bb", "-add", "/bin/bash /lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/x86_64-linux-gnu/libuuid.so.1 /lib/x86_64-linux-gnu/libuuid.so.1.3.0")
+	cmd = exec.Command("./bb", "-add", workingDir+":lib " + workingDir+":usr " + "/bin/bash /lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/x86_64-linux-gnu/libuuid.so.1 /lib/x86_64-linux-gnu/libuuid.so.1.3.0")
 	cmd.Dir = bbpath
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
