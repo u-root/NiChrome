@@ -29,6 +29,7 @@ rootwait
 `)
 	fetch         = flag.Bool("fetch", true, "Fetch all the things we need")
 	keys          = flag.String("keys", "vboot_reference/tests/devkeys", "where the keys live")
+	device        = flag.String("device", "", "What device to use, default is to ask you")
 	kernelVersion = "4.12.7"
 	workingDir    = ""
 	linuxVersion  = "linux_stable"
@@ -77,63 +78,15 @@ func setup() error {
 	homeDir = usr.HomeDir
 	fmt.Printf("Home dir is %s\n", homeDir)
 	fmt.Printf("Using apt-get to get %v\n", packageList)
-	get := []string{"apt-get", "install"}
+	get := []string{"apt-get", "-y", "install"}
 	get = append(get, packageList...)
 	cmd := exec.Command("sudo", get...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
 		return err
 	}
-	/*err = blankBootstick()
-	if err != nil {
-		return err
-	}*/
 	return nil
 
-}
-
-//User input for putting custom chrome image on bootstick
-func blankBootstick() error {
-	fmt.Printf("-------- Creating bootstick \n")
-	var imageLoc = ""
-	var location = "/dev/sda"
-	for true {
-		fmt.Printf("What image would you like to put onto your bootstick (provide location for iso file)?\n")
-		_, err := fmt.Scanf("%s", &imageLoc)
-		if err != nil {
-			return err
-		}
-		imageLoc = tildeExpand(imageLoc)
-		if err != nil {
-			return err
-		}
-		if _, err = os.Stat(imageLoc); err != nil {
-			fmt.Printf("Please provide a valid file name. %s has error %v\n", imageLoc, err)
-		} else {
-			break
-		}
-	}
-	for true {
-		fmt.Printf("Where is your bootstick (%s)?\n", location)
-		_, err := fmt.Scanf("%s", &location)
-		if err != nil {
-			return err
-		}
-		location = tildeExpand(location)
-		if err != nil {
-			return err
-		}
-		if _, err = os.Stat(location); err != nil {
-			fmt.Printf("Please provide a valid location name. %s has error %v\n", location, err)
-		} else {
-			break
-		}
-	}
-	fmt.Printf("Running dd to put the new image onto the desired location. \n")
-	if err := cp(imageLoc, location); err != nil {
-		return err
-	}
-	return nil
 }
 
 func cleanup() error {
@@ -179,27 +132,26 @@ func goGet() error {
 	fmt.Printf("--------Getting u-root \n")
 	cmd := exec.Command("go", "get", "github.com/u-root/u-root/")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	err := cmd.Run()
-	/*if err != nil {
+	if err := cmd.Run(); err != nil {
 		return err
-	}*/
+	}
 	fmt.Printf("--------Got u-root \n")
-	gopath := fmt.Sprintf("GOPATH=%s/go", homeDir)
-	bbpath := fmt.Sprintf("%s/go/src/github.com/u-root/u-root/bb/bb", homeDir)
-	cmd = exec.Command("go", "build", "bbpath")
+	bbpath := filepath.Join(os.Getenv("GOPATH"), "src/github.com/u-root/u-root/bb")
+	cmd = exec.Command("go", "build", "-x", ".")
+	cmd.Dir = bbpath
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	err = cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		return err
 	}
-	cmd = exec.Command(gopath, bbpath)
+	// We need to run bb in the bb directory. Kind of a flaw in its
+	// operation. Sorry.
+	cmd = exec.Command("./bb")
+	cmd.Dir = bbpath
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	err = cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		return err
 	}
-	fmt.Printf("--------Getting bb \n")
-	if _, err := os.Stat("/tmp/initramgs.linux_amd64.cpio"); err != nil {
+	if _, err := os.Stat("/tmp/initramfs.linux_amd64.cpio"); err != nil {
 		return err
 	}
 	fmt.Printf("Created the initramfs in /tmp/")
@@ -298,9 +250,9 @@ func vbutilIt() error {
 }
 
 func dd() error {
-	var location = "/dev/sda2"
-	for true {
-		fmt.Printf("Where do you want to put this kernel (%s)", location)
+	for *device == "" {
+		var location string
+		fmt.Printf("Where do you want to put this kernel ")
 		_, err := fmt.Scanf("%s", &location)
 		if err != nil {
 			return err
@@ -308,11 +260,11 @@ func dd() error {
 		if _, err = os.Stat(location); err != nil {
 			fmt.Printf("Please provide a valid location name. %s has error %v", location, err)
 		} else {
-			break
+			*device = location
 		}
 	}
 	fmt.Printf("Running dd to put the new kernel onto the desired location on the usb.\n")
-	args := []string{"dd", "if=newKern", "of=" + location}
+	args := []string{"dd", "if=newKern", "of=" + *device}
 	msg, err := exec.Command("sudo", args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("dd %v failed: %v: %v", args, string(msg), err)
@@ -338,10 +290,9 @@ func allFunc() error {
 			log.Printf("ERROR: %v\n", err)
 		}
 	}
-	//error ridden
-	/*if err := goGet(); err != nil {
-		log.Printf("ERROR: %v\n", err)
-	}*/
+	if err := goGet(); err != nil {
+		log.Fatalf("ERROR: %v\n", err)
+	}
 	if *fetch {
 		if err := kernelGet(); err != nil {
 			log.Printf("ERROR: %v\n", err)
