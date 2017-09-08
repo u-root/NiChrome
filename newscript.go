@@ -170,7 +170,7 @@ func kernelGet() error {
 	return nil
 }
 
-func unpackKernel() error {
+func buildKernel() error {
 	if err := os.Symlink("/tmp/initramfs.linux_amd64.cpio", fmt.Sprintf("%s/initramfs.linux_amd64.cpio", "linux-stable")); err != nil {
 		fmt.Printf("[warning only] Error creating symlink for initramfs: %v", err)
 	}
@@ -276,45 +276,43 @@ func dd() error {
 //TODO : final Error
 //TODO: absolute filepath things
 func allFunc() error {
+	var cmds = []struct {
+		f      func() error
+		skip   bool
+		ignore bool
+		n      string
+	}{
+		{f: cleanup, skip: !*fetch, ignore: false, n: "cleanup"},
+		{f: setup, skip: false, ignore: false, n: "setup"},
+		{f: goCompatibility, skip: false, ignore: true, n: "Check Go Version"},
+		{f: goGet, skip: false, ignore: false, n: "Get u-root source"},
+		{f: kernelGet, skip: !*fetch, ignore: false, n: "Git clone the kernel"},
+		{f: buildKernel, skip: false, ignore: false, n: "build the kernel"},
+		{f: vbutilIt, skip: false, ignore: false, n: "vbutil and create a kernel image"},
+	}
 
-	if *fetch {
-		if err := cleanup(); err != nil {
-			log.Fatalf("ERROR: %v\n", err)
+	for _, c := range cmds {
+		if c.skip {
+			continue
 		}
-	}
-	if err := setup(); err != nil {
-		log.Fatalf("ERROR: %v\n", err)
-	}
-	if false {
-		if err := goCompatibility(); err != nil {
-			log.Fatalf("ERROR: %v\n", err)
+		log.Printf("----------> Start %v", c.n)
+		err := c.f()
+		if c.ignore {
+			continue
 		}
-	}
-	if err := goGet(); err != nil {
-		log.Fatalf("ERROR: %v\n", err)
-	}
-	if *fetch {
-		if err := kernelGet(); err != nil {
-			log.Fatalf("ERROR: %v\n", err)
+		if err != nil {
+			return fmt.Errorf("%v: %v", c.n, err)
 		}
-	}
-	if err := unpackKernel(); err != nil {
-		log.Fatalf("ERROR: %v\n", err)
-	}
-	if err := vbutilIt(); err != nil {
-		log.Fatalf("ERROR: %v\n", err)
+		log.Printf("----------> Finished %v\n", c.n)
 	}
 	return nil
 }
 
 func main() {
 	flag.Parse()
-	//all paramters: name of new kernel, location for dd, kernel version,
-	fmt.Printf("Using kernel default as 4.12.7\n")
+	log.Printf("Using kernel %v\n", kernelVersion)
 	if err := allFunc(); err != nil {
-		fmt.Printf("fail error is : %v", err)
-		os.Exit(1)
+		log.Fatalf("fail error is : %v", err)
 	}
-	fmt.Printf("execution completed successfully\n")
-
+	log.Printf("execution completed successfully\n")
 }

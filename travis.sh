@@ -1,5 +1,7 @@
 #!/bin/bash
-export GOPATH=/home/travis/gopath
+if [ -z "${GOPATH}" ]; then
+	export GOPATH=/home/travis/gopath
+fi
 set -e
 
 go run newscript.go -device=/dev/null
