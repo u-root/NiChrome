@@ -36,7 +36,7 @@ rootwait
 	homeDir       = ""
 	totalSteps    = 7
 	packageList   = []string{
-		"git", "golang", "build-essential", "git-core", "gitk", "git-gui", "subversion", "curl", "python2.7", "libyaml-dev", "liblzma-dev"}
+		"git", "golang", "build-essential", "git-core", "gitk", "git-gui", "subversion", "curl", "python2.7", "libyaml-dev", "liblzma-dev", "uuid-dev"}
 )
 
 func cp(inputLoc string, outputLoc string) error {
@@ -279,15 +279,15 @@ func allFunc() error {
 
 	if *fetch {
 		if err := cleanup(); err != nil {
-			log.Printf("ERROR: %v\n", err)
+			log.Fatalf("ERROR: %v\n", err)
 		}
 	}
 	if err := setup(); err != nil {
-		log.Printf("ERROR: %v\n", err)
+		log.Fatalf("ERROR: %v\n", err)
 	}
 	if false {
 		if err := goCompatibility(); err != nil {
-			log.Printf("ERROR: %v\n", err)
+			log.Fatalf("ERROR: %v\n", err)
 		}
 	}
 	if err := goGet(); err != nil {
@@ -295,14 +295,14 @@ func allFunc() error {
 	}
 	if *fetch {
 		if err := kernelGet(); err != nil {
-			log.Printf("ERROR: %v\n", err)
+			log.Fatalf("ERROR: %v\n", err)
 		}
 	}
 	if err := unpackKernel(); err != nil {
-		log.Printf("ERROR: %v\n", err)
+		log.Fatalf("ERROR: %v\n", err)
 	}
 	if err := vbutilIt(); err != nil {
-		log.Printf("ERROR: %v\n", err)
+		log.Fatalf("ERROR: %v\n", err)
 	}
 	return nil
 }
