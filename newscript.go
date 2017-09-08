@@ -3,13 +3,10 @@ package main
 //include a loading bar
 //TODO: Use filePath.join
 //automated "yes"er updating the config file
-//TODO check if it is a device
-//TODO append method name to error
-//TODO proper output channels when you run commands
+//TODO: absolute filepath things
 //TODO in the newest kernel pull the stable one if it fails, then go back to what was there, see the notes on the PR)
 import (
 	"bytes"
-	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -27,14 +24,15 @@ var (
 init=/init
 rootwait
 `)
-	fetch         = flag.Bool("fetch", true, "Fetch all the things we need")
-	keys          = flag.String("keys", "vboot_reference/tests/devkeys", "where the keys live")
-	kernelVersion = "4.12.7"
-	workingDir    = ""
-	linuxVersion  = "linux_stable"
-	homeDir       = ""
-	totalSteps    = 7
-	packageList   = []string{
+
+	fetch        = flag.Bool("fetch", true, "Fetch all the things we need")
+	keys         = flag.String("keys", "vboot_reference/tests/devkeys", "where the keys live")
+	nameKernel   = flag.String("kName", "newKern", "what you would like to name your new kernel")
+	linuxVersion = flag.String("kVersion", "v4.12.7", "version of kernel")
+	workingDir   = ""
+	homeDir      = ""
+	totalSteps   = 7
+	packageList  = []string{
 		"git", "golang", "build-essential", "git-core", "gitk", "git-gui", "subversion", "curl", "python2.7", "libyaml-dev", "liblzma-dev"}
 )
 
@@ -84,12 +82,20 @@ func setup() error {
 	if err := cmd.Run(); err != nil {
 		return err
 	}
-	/*err = blankBootstick()
+	err = blankBootstick()
 	if err != nil {
 		return err
-	}*/
+	}
 	return nil
 
+}
+
+func deviceAndLocation() {
+	cmd := exec.Command("lsblk")
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		log.Print("unable to print output of lsblk")
+	}
 }
 
 //User input for putting custom chrome image on bootstick
@@ -97,6 +103,20 @@ func blankBootstick() error {
 	fmt.Printf("-------- Creating bootstick \n")
 	var imageLoc = ""
 	var location = "/dev/sda"
+	for true {
+		var yOrn = ""
+		fmt.Printf("Does your usb already have an image on it? (y/n)")
+		if _, err := fmt.Scanf("%s", &yOrn); err != nil {
+			return err
+		}
+		if strings.Compare(yOrn, "y") == 0 {
+			return nil
+		}
+		if strings.Compare(yOrn, "n") == 0 {
+			break
+		}
+		fmt.Printf("Please only enter y or n You entered %s", yOrn)
+	}
 	for true {
 		fmt.Printf("What image would you like to put onto your bootstick (provide location for iso file)?\n")
 		_, err := fmt.Scanf("%s", &imageLoc)
@@ -114,7 +134,8 @@ func blankBootstick() error {
 		}
 	}
 	for true {
-		fmt.Printf("Where is your bootstick (%s)?\n", location)
+		fmt.Printf("Where is your bootstick (%s) We found the following devices:?\n", location)
+		deviceAndLocation()
 		_, err := fmt.Scanf("%s", &location)
 		if err != nil {
 			return err
@@ -130,14 +151,17 @@ func blankBootstick() error {
 		}
 	}
 	fmt.Printf("Running dd to put the new image onto the desired location. \n")
-	if err := cp(imageLoc, location); err != nil {
-		return err
+	args := []string{"dd", "if=" + imageLoc, "of=" + location}
+	msg, err := exec.Command("sudo", args...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("dd %v failed: %v: %v", args, string(msg), err)
 	}
+	fmt.Printf("%v ran ok\n", args)
 	return nil
 }
 
 func cleanup() error {
-	filesToRemove := [...]string{linuxVersion, "linux-stable", "NiChrome", "vboot_reference"}
+	filesToRemove := [...]string{*linuxVersion, "NiChrome", "vboot_reference", "linux-stable"}
 	fmt.Printf("-------- Removing problematic files %v\n", filesToRemove)
 	for _, file := range filesToRemove {
 		if _, err := os.Stat(file); err != nil {
@@ -170,36 +194,39 @@ func goCompatibility() error {
 	if termString > 1.7 {
 		fmt.Println("Compatible go version")
 	} else {
-		return errors.New("Please install go v1.7 or greater.")
+		fmt.Println("Please manually check that you've installed go v1.7 or greater.")
 	}
 	return nil
 }
 
 func goGet() error {
 	fmt.Printf("--------Getting u-root \n")
-	cmd := exec.Command("go", "get", "github.com/u-root/u-root/")
+
+	cmd := exec.Command("go", "get", "github.com/u-root/u-root/...")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	err := cmd.Run()
-	/*if err != nil {
-		return err
-	}*/
-	fmt.Printf("--------Got u-root \n")
-	gopath := fmt.Sprintf("GOPATH=%s/go", homeDir)
-	bbpath := fmt.Sprintf("%s/go/src/github.com/u-root/u-root/bb/bb", homeDir)
-	cmd = exec.Command("go", "build", "bbpath")
+	if err != nil {
+		log.Printf(" error: %v. Continuing...", err)
+	}
+	fmt.Printf("-------Built u-root \n")
+	cmd = exec.Command("go", "build", "github.com/u-root/u-root/bb/")
+	cmd.Env = []string{"GOOS=linux"}
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	err = cmd.Run()
+
+	if err != nil {
+		log.Printf(" error: %v. Continuing...", err)
+	}
+	fmt.Printf("Running bb \n")	
+	cmd = exec.Command("./bb","-add","/bin/date")
+	cmd.Env = []string{"GOOS=linux"}
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	err = cmd.Run()
 	if err != nil {
-		return err
+		log.Printf(" error: %v. Continuing...", err)
 	}
-	cmd = exec.Command(gopath, bbpath)
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	err = cmd.Run()
-	if err != nil {
-		return err
-	}
-	fmt.Printf("--------Getting bb \n")
-	if _, err := os.Stat("/tmp/initramgs.linux_amd64.cpio"); err != nil {
+	fmt.Printf("--------Checking  \n")
+	if _, err := os.Stat("/tmp/initramfs.linux_amd64.cpio"); err != nil {
 		return err
 	}
 	fmt.Printf("Created the initramfs in /tmp/")
@@ -207,7 +234,7 @@ func goGet() error {
 }
 
 func kernelGet() error {
-	var args = []string{"clone", "--depth", "1", "-b", "v4.12.7", "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"}
+	var args = []string{"clone", "--depth", "1", "-b", *linuxVersion, "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"}
 	fmt.Printf("-------- Getting the kernel via git %v\n", args)
 	cmd := exec.Command("git", args...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
@@ -225,7 +252,7 @@ func unpackKernel() error {
 	// NOTE: don't get confused. This means that .config in linux-stable
 	// points to CONFIG, i.e. where we are.
 	if err := cp("CONFIG", "linux-stable/.config"); err != nil {
-		fmt.Printf("[warning only] Error creating symlink for .config: %v", err)
+		fmt.Printf("[warning only] Error copying for .config: %v", err)
 	}
 
 	cmd := exec.Command("make", "--directory", "linux-stable", "-j64")
@@ -274,7 +301,6 @@ func vbutilIt() error {
 	fmt.Printf("-------- VBUTILING\n")
 	buildVbutil()
 	fmt.Printf("-------- VBUTILING  contd. \n")
-	newKern := "newKern"
 	if err := ioutil.WriteFile("config.txt", configTxt, 0644); err != nil {
 		return err
 	}
@@ -285,7 +311,7 @@ func vbutilIt() error {
 	fmt.Printf("Bz image is located at %s \n", bzImage)
 	keyblock := filepath.Join(*keys, "kernel.keyblock")
 	sign := filepath.Join(*keys, "kernel_data_key.vbprivk")
-	cmd := exec.Command("./vboot_reference/build/futility/futility", "vbutil_kernel", "--pack", newKern, "--keyblock", keyblock, "--signprivate", sign, "--version", "1", "--vmlinuz", bzImage, "--bootloader", "nocontent.efi", "--config", "config.txt", "--arch", "x86")
+	cmd := exec.Command("./vboot_reference/build/futility/futility", "vbutil_kernel", "--pack", *nameKernel, "--keyblock", keyblock, "--signprivate", sign, "--version", "1", "--vmlinuz", bzImage, "--bootloader", "nocontent.efi", "--config", "config.txt", "--arch", "x86")
 	stdoutStderr, err := cmd.CombinedOutput()
 	fmt.Printf("%s\n", stdoutStderr)
 	if err != nil {
@@ -312,7 +338,7 @@ func dd() error {
 		}
 	}
 	fmt.Printf("Running dd to put the new kernel onto the desired location on the usb.\n")
-	args := []string{"dd", "if=newKern", "of=" + location}
+	args := []string{"dd", "if=" + *nameKernel, "of=" + location}
 	msg, err := exec.Command("sudo", args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("dd %v failed: %v: %v", args, string(msg), err)
@@ -321,44 +347,38 @@ func dd() error {
 	return nil
 }
 
-//TODO : final Error
-//TODO: absolute filepath things
 func allFunc() error {
 
 	if *fetch {
 		if err := cleanup(); err != nil {
-			log.Printf("ERROR: %v\n", err)
+			log.Printf("ERROR ON CLEANUP: %v\n", err)
 		}
 	}
 	if err := setup(); err != nil {
-		log.Printf("ERROR: %v\n", err)
+		log.Printf("ERROR ON SETUP: %v\n", err)
 	}
-	if false {
-		if err := goCompatibility(); err != nil {
-			log.Printf("ERROR: %v\n", err)
-		}
+	if err := goCompatibility(); err != nil {
+		log.Printf("ERROR ON GO: %v\n", err)
 	}
-	//error ridden
-	/*if err := goGet(); err != nil {
-		log.Printf("ERROR: %v\n", err)
-	}*/
+	if err := goGet(); err != nil {
+		log.Printf("ERROR ON GO GET: %v\n", err)
+	}
 	if *fetch {
 		if err := kernelGet(); err != nil {
-			log.Printf("ERROR: %v\n", err)
+			log.Printf("ERROR ON KERNEL GET: %v\n", err)
 		}
 	}
 	if err := unpackKernel(); err != nil {
-		log.Printf("ERROR: %v\n", err)
+		log.Printf("ERROR ON UNPACK: %v\n", err)
 	}
 	if err := vbutilIt(); err != nil {
-		log.Printf("ERROR: %v\n", err)
+		log.Printf("ERROR ON VBUTIL: %v\n", err)
 	}
 	return nil
 }
 
 func main() {
 	flag.Parse()
-	//all paramters: name of new kernel, location for dd, kernel version,
 	fmt.Printf("Using kernel default as 4.12.7\n")
 	if err := allFunc(); err != nil {
 		fmt.Printf("fail error is : %v", err)
