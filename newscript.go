@@ -223,9 +223,6 @@ func buildVbutil() error {
 }
 
 func vbutilIt() error {
-	fmt.Printf("-------- VBUTILING\n")
-	buildVbutil()
-	fmt.Printf("-------- VBUTILING  contd. \n")
 	newKern := "newKern"
 	if err := ioutil.WriteFile("config.txt", configTxt, 0644); err != nil {
 		return err
@@ -288,6 +285,7 @@ func allFunc() error {
 		{f: goGet, skip: false, ignore: false, n: "Get u-root source"},
 		{f: kernelGet, skip: !*fetch, ignore: false, n: "Git clone the kernel"},
 		{f: buildKernel, skip: false, ignore: false, n: "build the kernel"},
+		{f: buildVbutil, skip: false, ignore: false, n: "build vbutil"},
 		{f: vbutilIt, skip: false, ignore: false, n: "vbutil and create a kernel image"},
 	}
 
