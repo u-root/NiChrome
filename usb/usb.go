@@ -35,7 +35,19 @@ rootwait
 	linuxVersion  = "linux_stable"
 	homeDir       = ""
 	packageList   = []string{
-		"git", "golang", "build-essential", "git-core", "gitk", "git-gui", "subversion", "curl", "python2.7", "libyaml-dev", "liblzma-dev", "uuid-dev"}
+		"git",
+		"golang",
+		"build-essential",
+		"git-core",
+		"gitk",
+		"git-gui",
+		"subversion",
+		"curl",
+		"python2.7",
+		"libyaml-dev",
+		"liblzma-dev",
+		"uuid-dev",
+	}
 )
 
 func cp(inputLoc string, outputLoc string) error {
