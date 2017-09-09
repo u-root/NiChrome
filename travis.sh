@@ -4,7 +4,6 @@ if [ -z "${GOPATH}" ]; then
 fi
 set -e
 
-go run newscript.go -device=/dev/null
 
 cpio -ivt < /tmp/initramfs.linux_amd64.cpio
 
