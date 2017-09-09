@@ -173,7 +173,7 @@ check_kernel_size() {
   fi
 }
 
-build_img() {
+create_kernel_hash() {
   local image_name="$1"
   local root_dev="$2"
   local root_dev_size="$3"
@@ -196,11 +196,10 @@ build_img() {
     vblock=--hd_vblock="${FLAGS_output_dir}/${vblock}"
   fi
 
-  ./build_kernel_image.sh \
-    --board="${FLAGS_board}" \
+  ./create_hash.sh \
     --arch="${FLAGS_arch}" \
     --to="${FLAGS_output_dir}/${image_name}" \
-    --vmlinuz="${FLAGS_rootfs_mountpoint}/boot/vmlinuz" \
+    --vmlinuz="kernels/bzImage" \
     --working_dir="${FLAGS_output_dir}" \
     --boot_args="${FLAGS_boot_args}" \
     --keep_work \
@@ -294,17 +293,17 @@ make_image_bootable() {
     "${FLAGS_image_type}" ROOT-A)"
   local rootfs_fs_size=$(get_filesystem_size "${FLAGS_image_type}" \
     "${partition_num_root_a}")
-  #build_img "vmlinuz.image" "${root_dev}" "${rootfs_fs_size}" "${keyblock}" \
-  #          "recovery_kernel_data_key.vbprivk" "recovery_key.vbpubk"
-  #build_img "hd_vmlinuz.image" "${root_dev}" "${rootfs_fs_size}" \
+  create_kernel_hash "vmlinuz.image" "${root_dev}" "${rootfs_fs_size}" "${keyblock}" \
+            "recovery_kernel_data_key.vbprivk" "recovery_key.vbpubk"
+  # build_img "hd_vmlinuz.image" "${root_dev}" "${rootfs_fs_size}" \
   #          "kernel.keyblock" "kernel_data_key.vbprivk" "kernel_subkey.vbpubk" \
   #          "vmlinuz_hd.vblock"
 
   # Check the size of kernel image and issue warning when image size is
   # near the limit.
-  local kernel_image_size_A=$(stat -c '%s' kernels/linux.bin)
+  local kernel_image_size_A=$(stat -c '%s' ${FLAGS_output_dir}/vmlinuz.image)
   info "Kernel image A   size is ${kernel_image_size_A} bytes."
-  local kernel_image_size_B=$(stat -c '%s' kernels/linux.bin)
+  local kernel_image_size_B=$(stat -c '%s' ${FLAGS_output_dir}/vmlinuz.image)
   info "Kernel image B   size is ${kernel_image_size_B} bytes."
   local partition_num_kern_a="$(get_layout_partition_number \
     "${FLAGS_image_type}" KERN-A)"
@@ -313,48 +312,47 @@ make_image_bootable() {
     "${FLAGS_image_type}" KERN-B)"
   check_kernel_size ${kernel_image_size_B} ${partition_num_kern_b} B
 
-#  local rootfs_hash_size=$(stat -c '%s' ${FLAGS_rootfs_hash})
-#  local rootfs_partition_size=$(get_partition_size ${FLAGS_image_type} \
-#      ${partition_num_root_a})
-#  local rootfs_hash_pad=$(( rootfs_partition_size - rootfs_fs_size ))
-#  info "Appending rootfs.hash (${rootfs_hash_size} bytes) to the root fs"
-#  if [[ ${rootfs_hash_size} -gt ${rootfs_hash_pad} ]]
-#  then
-#    die "rootfs_partition_size - rootfs_fs_size is less than the needed " \
-#        "rootfs_hash_size (${rootfs_hash_size}), update your disk layout " \
-#        "configuration"
-#  fi
-#  # Unfortunately, mount_gpt_image uses mount and not losetup to create the
-#  # loop devices.  This means that they are not the correct size.  We have to
-#  # write directly to the image to append the hash tree data.
-#  local hash_offset="$(partoffset ${image} ${partition_num_root_a})"
-#  hash_offset=$((hash_offset + (${rootfs_fs_size} / 512)))
-#  sudo dd bs=512 \
-#          seek=${hash_offset} \
-#          if="${FLAGS_rootfs_hash}" \
-#          of="${image}" \
-#          conv=notrunc \
-#          status=none
-#
-#  # Move the verification block needed for the hard disk install to the
-#  # stateful partition. Mount stateful fs, copy file, and umount fs.
-#  # In original CL: http://codereview.chromium.org/2868044, this was done in
-#  # create_base_image(). However, it could break the build if it is a clean
-#  # build because vmlinuz_hd.vblock hasn't been created by build_kernel_image.sh
-#  # In some builds that don't use vboot to verify the kernel, this file might
-#  # not get created as part of the build, so only copy them if they were.
-#  if [ -f "${FLAGS_output_dir}/vmlinuz_hd.vblock" ]; then
-#    sudo cp "${FLAGS_output_dir}/vmlinuz_hd.vblock" \
-#            "${FLAGS_statefulfs_mountpoint}"
-#  fi
+  local rootfs_hash_size=$(stat -c '%s' ${FLAGS_rootfs_hash})
+  local rootfs_partition_size=$(get_partition_size ${FLAGS_image_type} \
+      ${partition_num_root_a})
+  local rootfs_hash_pad=$(( rootfs_partition_size - rootfs_fs_size ))
+  info "Appending rootfs.hash (${rootfs_hash_size} bytes) to the root fs"
+  if [[ ${rootfs_hash_size} -gt ${rootfs_hash_pad} ]]
+  then
+    die "rootfs_partition_size - rootfs_fs_size is less than the needed " \
+        "rootfs_hash_size (${rootfs_hash_size}), update your disk layout " \
+        "configuration"
+  fi
+  # Unfortunately, mount_gpt_image uses mount and not losetup to create the
+  # loop devices.  This means that they are not the correct size.  We have to
+  # write directly to the image to append the hash tree data.
+  local hash_offset="$(partoffset ${image} ${partition_num_root_a})"
+  hash_offset=$((hash_offset + (${rootfs_fs_size} / 512)))
+  sudo dd bs=512 \
+          seek=${hash_offset} \
+          if="${FLAGS_rootfs_hash}" \
+          of="${image}" \
+          conv=notrunc \
+          status=none
 
+  # Move the verification block needed for the hard disk install to the
+  # stateful partition. Mount stateful fs, copy file, and umount fs.
+  # In original CL: http://codereview.chromium.org/2868044, this was done in
+  # create_base_image(). However, it could break the build if it is a clean
+  # build because vmlinuz_hd.vblock hasn't been created by build_kernel_image.sh
+  # In some builds that don't use vboot to verify the kernel, this file might
+  # not get created as part of the build, so only copy them if they were.
+  if [ -f "${FLAGS_output_dir}/vmlinuz_hd.vblock" ]; then
+    sudo cp "${FLAGS_output_dir}/vmlinuz_hd.vblock" \
+            "${FLAGS_statefulfs_mountpoint}"
+  fi
   # Install the kernel to both slots A and B so there will always be a regular
-  # kernel in slot B on recovery and non-recovery images.
+ # kernel in slot B on recovery and non-recovery images.
   local koffset="$(partoffset ${image} ${partition_num_kern_a})"
-  sudo dd if="kernels/linux.bin" of="${image}" \
+  sudo dd if="${FLAGS_output_dir}/vmlinuz.image" of="${image}" \
     conv=notrunc bs=512 seek=${koffset} status=none
   koffset="$(partoffset ${image} ${partition_num_kern_b})"
-  sudo dd if="kernels/linux.bin" of="${image}" \
+  sudo dd if="${FLAGS_output_dir}/vmlinuz.image" of="${image}" \
     conv=notrunc bs=512 seek=${koffset} status=none
 
   # Update the bootloaders.  The EFI system partition will be updated.
