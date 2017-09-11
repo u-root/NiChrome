@@ -28,7 +28,7 @@ var (
 init=/init
 rootwait
 `)
-	fetch    = flag.Bool("fetch", true, "Fetch all the things we need")
+	fetch    = flag.Bool("fetch", false, "Fetch all the things we need")
 	skiproot = flag.Bool("skiproot", false, "Don't put the root onto usb")
 	skipkern = flag.Bool("skipkern", false, "Don't put the kern onto usb")
 	keys     = flag.String("keys", "vboot_reference/tests/devkeys", "where the keys live")

@@ -5,7 +5,7 @@ fi
 set -e
 
 (cd usb && go build .)
-./usb/usb -root=/dev/null -kern=/dev/null
+./usb/usb -fetch=true -root=/dev/null -kern=/dev/null
 
 cpio -ivt < /tmp/initramfs.linux_amd64.cpio
 
