@@ -12,6 +12,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -27,9 +28,13 @@ var (
 init=/init
 rootwait
 `)
-	fetch         = flag.Bool("fetch", true, "Fetch all the things we need")
-	keys          = flag.String("keys", "vboot_reference/tests/devkeys", "where the keys live")
-	device        = flag.String("device", "", "What device to use, default is to ask you")
+	fetch    = flag.Bool("fetch", true, "Fetch all the things we need")
+	skiproot = flag.Bool("skiproot", false, "Don't put the root onto usb")
+	skipkern = flag.Bool("skipkern", false, "Don't put the kern onto usb")
+	keys     = flag.String("keys", "vboot_reference/tests/devkeys", "where the keys live")
+	kern     = flag.String("kern", "", "What device to use for kernel, default is to ask you")
+	root     = flag.String("root", "", "What device to use for root, default is to ask you")
+
 	kernelVersion = "4.12.7"
 	workingDir    = ""
 	linuxVersion  = "linux_stable"
@@ -251,14 +256,14 @@ func vbutilIt() error {
 	if err != nil {
 		return err
 	}
-	if err = dd(); err != nil {
+	if err = olddd(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func dd() error {
-	for *device == "" {
+func olddd() error {
+	for *kern == "" {
 		var location string
 		fmt.Printf("Where do you want to put this kernel ")
 		_, err := fmt.Scanf("%s", &location)
@@ -268,17 +273,95 @@ func dd() error {
 		if _, err = os.Stat(location); err != nil {
 			fmt.Printf("Please provide a valid location name. %s has error %v", location, err)
 		} else {
-			*device = location
+			*kern = location
 		}
 	}
 	fmt.Printf("Running dd to put the new kernel onto the desired location on the usb.\n")
-	args := []string{"dd", "if=newKern", "of=" + *device}
+	args := []string{"dd", "if=newKern", "of=" + *kern}
 	msg, err := exec.Command("sudo", args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("dd %v failed: %v: %v", args, string(msg), err)
 	}
 	fmt.Printf("%v ran ok\n", args)
 	return nil
+}
+
+func dd(name, dev, file string) error {
+	for dev == "" {
+		var location string
+		fmt.Printf("Where do you want to put %v", name)
+		_, err := fmt.Scanf("%s", &location)
+		if err != nil {
+			return err
+		}
+		if _, err = os.Stat(location); err != nil {
+			fmt.Printf("Please provide a valid location name. %s has error %v", location, err)
+		} else {
+			dev = location
+		}
+	}
+	fmt.Printf("Running dd to put %v onto %v", file, dev)
+	args := []string{"dd", "if=" + file, "of=" + dev}
+	msg, err := exec.Command("sudo", args...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("dd %v failed: %v: %v", args, string(msg), err)
+	}
+	return nil
+}
+
+func rootdd() error {
+	return dd("tcz CPIO archive", *root, "tcz.cpio")
+}
+
+func lsr(n string, w io.Writer) error {
+	err := filepath.Walk(n, func(name string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if fi.IsDir() {
+			return nil
+		}
+		fmt.Fprintf(w, "%v\n", name)
+		return nil
+	})
+	return err
+}
+
+func run(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("%v %v: %v", name, args, err)
+	}
+	return nil
+}
+
+func tcz() error {
+	t := filepath.Join(os.Getenv("GOPATH"), "bin/tcz")
+	if _, err := os.Stat(t); err != nil {
+		// let's try to be nice about this
+		if err := run("go", "install", "github.com/u-root/u-root/cmds/tcz"); err != nil {
+			return fmt.Errorf("Building tcz: %v", err)
+		}
+	}
+	if _, err := os.Stat(t); err != nil {
+		return err
+	}
+	return run("tcz", append([]string{"-d", "-i=false", "-r=tcz"}, tczList...)...)
+}
+
+func cpiotcz() error {
+	out, err := os.OpenFile("tcz.cpio", os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return fmt.Errorf("tcz cpio create: %v", err)
+	}
+	var b bytes.Buffer
+	if err := lsr("tcz", &b); err != nil {
+		return fmt.Errorf("lsr tcz: %v", err)
+	}
+	cmd := exec.Command("cpio", "-o", "-H", "newc")
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = &b, out, os.Stderr
+	return cmd.Run()
 }
 
 //TODO : final Error
@@ -290,17 +373,20 @@ func allFunc() error {
 		ignore bool
 		n      string
 	}{
-		{f: cleanup, skip: !*fetch, ignore: false, n: "cleanup"},
 		{f: setup, skip: false, ignore: false, n: "setup"},
-		{f: aptget, skip: !*fetch, ignore: false, n: "apt get"},
-		{f: goCompatibility, skip: false, ignore: true, n: "Check Go Version"},
+		{f: cleanup, skip: !*fetch, ignore: false, n: "cleanup"},
+		{f: goCompatibility, skip: *skipkern, ignore: true, n: "Check Go Version"},
 		{f: goGet, skip: !*fetch, ignore: false, n: "Get u-root source"},
-		{f: goBuild, skip: false, ignore: false, n: "Build u-root source"},
+		{f: tcz, skip: !*fetch, ignore: false, n: "run tcz to create the directory of packages"},
+		{f: cpiotcz, skip: *skiproot, ignore: false, n: "Create the cpio file from tcp"},
+		{f: rootdd, skip: *skiproot, ignore: false, n: "Put the tcz cpio onto the stick"},
+		{f: aptget, skip: !*fetch, ignore: false, n: "apt get"},
+		{f: goBuild, skip: *skipkern, ignore: false, n: "Build u-root source"},
 		{f: kernelGet, skip: !*fetch, ignore: false, n: "Git clone the kernel"},
-		{f: buildKernel, skip: false, ignore: false, n: "build the kernel"},
+		{f: buildKernel, skip: *skipkern, ignore: false, n: "build the kernel"},
 		{f: getVbutil, skip: !*fetch, ignore: false, n: "git clone vbutil"},
-		{f: buildVbutil, skip: false, ignore: false, n: "build vbutil"},
-		{f: vbutilIt, skip: false, ignore: false, n: "vbutil and create a kernel image"},
+		{f: buildVbutil, skip: *skipkern, ignore: false, n: "build vbutil"},
+		{f: vbutilIt, skip: *skipkern, ignore: false, n: "vbutil and create a kernel image"},
 	}
 
 	for _, c := range cmds {

@@ -41,5 +41,6 @@ var (
 		"s*/g*/u*/u*/c*/uname",
 		"s*/g*/u*/u*/c*/wget",
 		"s*/g*/u*/u*/c*/xinit",
+		"s*/g*/u*/N*/uinit",
 	}
 )
