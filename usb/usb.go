@@ -374,17 +374,17 @@ func allFunc() error {
 		n      string
 	}{
 		{f: setup, skip: false, ignore: false, n: "setup"},
-		{f: cleanup, skip: !*fetch, ignore: false, n: "cleanup"},
+		{f: cleanup, skip: *skipkern || *skiproot || !*fetch, ignore: false, n: "cleanup"},
 		{f: goCompatibility, skip: *skipkern, ignore: true, n: "Check Go Version"},
-		{f: goGet, skip: !*fetch, ignore: false, n: "Get u-root source"},
-		{f: tcz, skip: !*fetch, ignore: false, n: "run tcz to create the directory of packages"},
+		{f: goGet, skip: *skipkern || !*fetch, ignore: false, n: "Get u-root source"},
+		{f: tcz, skip: *skiproot || !*fetch, ignore: false, n: "run tcz to create the directory of packages"},
 		{f: cpiotcz, skip: *skiproot, ignore: false, n: "Create the cpio file from tcp"},
 		{f: rootdd, skip: *skiproot, ignore: false, n: "Put the tcz cpio onto the stick"},
-		{f: aptget, skip: !*fetch, ignore: false, n: "apt get"},
+		{f: aptget, skip: *skipkern || !*fetch, ignore: false, n: "apt get"},
 		{f: goBuild, skip: *skipkern, ignore: false, n: "Build u-root source"},
-		{f: kernelGet, skip: !*fetch, ignore: false, n: "Git clone the kernel"},
+		{f: kernelGet, skip: *skipkern || !*fetch, ignore: false, n: "Git clone the kernel"},
 		{f: buildKernel, skip: *skipkern, ignore: false, n: "build the kernel"},
-		{f: getVbutil, skip: !*fetch, ignore: false, n: "git clone vbutil"},
+		{f: getVbutil, skip: *skipkern || !*fetch, ignore: false, n: "git clone vbutil"},
 		{f: buildVbutil, skip: *skipkern, ignore: false, n: "build vbutil"},
 		{f: vbutilIt, skip: *skipkern, ignore: false, n: "vbutil and create a kernel image"},
 	}

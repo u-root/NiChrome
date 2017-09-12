@@ -12,7 +12,7 @@ var (
 		"s*/g*/u*/u*/c*/grep",
 		"s*/g*/u*/u*/c*/hexdump",
 		"s*/g*/u*/u*/c*/hostname",
-		"s*/g*/u*/u*/c*/id",
+		"s*/g*/u*/u*/c*/ed",
 		"s*/g*/u*/u*/c*/init",
 		"s*/g*/u*/u*/c*/insmod",
 		"s*/g*/u*/u*/c*/io",
