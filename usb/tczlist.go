@@ -1,7 +1,9 @@
 package main
 
 var (
+	// Note the -skip needs to be first
 	tczList = []string{
+		"-skip", "wireless-KERNEL",
 		"aterm",
 		"bash",
 		"strace",
@@ -39,5 +41,6 @@ var (
 		"Xorg-7.7",
 		"links",
 		"opera-12",
+		"wifi",
 	}
 )
