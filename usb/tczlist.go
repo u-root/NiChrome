@@ -41,6 +41,8 @@ var (
 		"Xorg-7.7",
 		"links",
 		"opera-12",
+		"firmware-atheros",
 		"wifi",
+		"less",
 	}
 )
