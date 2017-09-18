@@ -4,3 +4,7 @@ vboot_reference
 config.txt
 newKern
 usb/usb
+*.cpio
+*~
+uinit/uinit
+tcz/
