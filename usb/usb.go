@@ -347,7 +347,7 @@ func tcz() error {
 	if _, err := os.Stat(t); err != nil {
 		return err
 	}
-	return run("tcz", append([]string{"-d", "-i=false", "-r=tcz"}, tczList...)...)
+	return run(t, append([]string{"-d", "-i=false", "-r=tcz"}, tczList...)...)
 }
 
 func cpiotcz() error {
