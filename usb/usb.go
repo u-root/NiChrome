@@ -364,6 +364,13 @@ func cpiotcz() error {
 	return cmd.Run()
 }
 
+func check() error {
+	if os.Getenv("GOPATH") == "" {
+		return fmt.Errorf("You have to set GOPATH.")
+	}
+	return nil
+}
+
 //TODO : final Error
 //TODO: absolute filepath things
 func allFunc() error {
@@ -373,6 +380,7 @@ func allFunc() error {
 		ignore bool
 		n      string
 	}{
+		{f: check, skip: false, ignore: false, n: "check environment"},
 		{f: setup, skip: false, ignore: false, n: "setup"},
 		{f: cleanup, skip: *skipkern || *skiproot || !*fetch, ignore: false, n: "cleanup"},
 		{f: goCompatibility, skip: *skipkern, ignore: true, n: "Check Go Version"},
