@@ -164,7 +164,7 @@ func goBuild() error {
 	}
 	// We need to run bb in the bb directory. Kind of a flaw in its
 	// operation. Sorry.
-	cmd = exec.Command("./bb", append([]string{"-add", workingDir + ":lib " + workingDir + ":usr "}, cmdlist...)...)
+	cmd = exec.Command("./bb", cmdlist...)
 	cmd.Dir = bbpath
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -313,17 +313,20 @@ func rootdd() error {
 	return dd("tcz CPIO archive", *root, "tcz.cpio")
 }
 
-func lsr(n string, w io.Writer) error {
-	err := filepath.Walk(n, func(name string, fi os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if fi.IsDir() {
+func lsr(dirs []string, w io.Writer) error {
+	var err error
+	for _, n := range dirs {
+		err = filepath.Walk(n, func(name string, fi os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if fi.IsDir() {
+				return nil
+			}
+			fmt.Fprintf(w, "%v\n", name)
 			return nil
-		}
-		fmt.Fprintf(w, "%v\n", name)
-		return nil
-	})
+		})
+	}
 	return err
 }
 
@@ -356,7 +359,7 @@ func cpiotcz() error {
 		return fmt.Errorf("tcz cpio create: %v", err)
 	}
 	var b bytes.Buffer
-	if err := lsr("tcz", &b); err != nil {
+	if err := lsr([]string{"usr", "lib", "tcz"}, &b); err != nil {
 		return fmt.Errorf("lsr tcz: %v", err)
 	}
 	cmd := exec.Command("cpio", "-o", "-H", "newc")
