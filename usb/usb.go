@@ -253,37 +253,7 @@ func vbutilIt() error {
 	cmd := exec.Command("./vboot_reference/build/futility/futility", "vbutil_kernel", "--pack", newKern, "--keyblock", keyblock, "--signprivate", sign, "--version", "1", "--vmlinuz", bzImage, "--bootloader", "nocontent.efi", "--config", "config.txt", "--arch", "x86")
 	stdoutStderr, err := cmd.CombinedOutput()
 	fmt.Printf("%s\n", stdoutStderr)
-	if err != nil {
-		return err
-	}
-	if err = olddd(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func olddd() error {
-	for *kern == "" {
-		var location string
-		fmt.Printf("Where do you want to put this kernel ")
-		_, err := fmt.Scanf("%s", &location)
-		if err != nil {
-			return err
-		}
-		if _, err = os.Stat(location); err != nil {
-			fmt.Printf("Please provide a valid location name. %s has error %v", location, err)
-		} else {
-			*kern = location
-		}
-	}
-	fmt.Printf("Running dd to put the new kernel onto the desired location on the usb.\n")
-	args := []string{"dd", "if=newKern", "of=" + *kern}
-	msg, err := exec.Command("sudo", args...).CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("dd %v failed: %v: %v", args, string(msg), err)
-	}
-	fmt.Printf("%v ran ok\n", args)
-	return nil
+	return err
 }
 
 func dd(name, dev, file string) error {
@@ -300,13 +270,17 @@ func dd(name, dev, file string) error {
 			dev = location
 		}
 	}
-	fmt.Printf("Running dd to put %v onto %v", file, dev)
+	fmt.Printf("Running dd to put %v onto %v\n", file, dev)
 	args := []string{"dd", "if=" + file, "of=" + dev}
 	msg, err := exec.Command("sudo", args...).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("dd %v failed: %v: %v", args, string(msg), err)
 	}
 	return nil
+}
+
+func kerndd() error {
+	return dd("Kernel image", *kern, "newKern")
 }
 
 func rootdd() error {
@@ -398,6 +372,7 @@ func allFunc() error {
 		{f: getVbutil, skip: *skipkern || !*fetch, ignore: false, n: "git clone vbutil"},
 		{f: buildVbutil, skip: *skipkern, ignore: false, n: "build vbutil"},
 		{f: vbutilIt, skip: *skipkern, ignore: false, n: "vbutil and create a kernel image"},
+		{f: kerndd, skip: *skipkern, ignore: false, n: "Put the kernel image onto the stick"},
 	}
 
 	for _, c := range cmds {
