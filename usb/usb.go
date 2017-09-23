@@ -32,8 +32,10 @@ rootwait
 	skiproot = flag.Bool("skiproot", false, "Don't put the root onto usb")
 	skipkern = flag.Bool("skipkern", false, "Don't put the kern onto usb")
 	keys     = flag.String("keys", "vboot_reference/tests/devkeys", "where the keys live")
-	kern     = flag.String("kern", "", "What device to use for kernel, default is to ask you")
-	root     = flag.String("root", "", "What device to use for root, default is to ask you")
+	dev      = flag.String("dev", "/dev/null", "What device to use")
+	useB     = flag.Bool("useB", false, "Install on B instead of A.")
+	kernDev  string
+	rootDev  string
 
 	kernelVersion = "4.12.7"
 	workingDir    = ""
@@ -92,6 +94,15 @@ func setup() error {
 	}
 	homeDir = usr.HomeDir
 	fmt.Printf("Home dir is %s\n", homeDir)
+
+	if *dev == "/dev/null" {
+		kernDev, rootDev = *dev, *dev
+		return nil
+	}
+	kernDev, rootDev = *dev+"2", *dev+"3"
+	if *useB {
+		kernDev, rootDev = *dev+"4", *dev+"5"
+	}
 	return nil
 }
 
@@ -257,20 +268,7 @@ func vbutilIt() error {
 }
 
 func dd(name, dev, file string) error {
-	for dev == "" {
-		var location string
-		fmt.Printf("Where do you want to put %v", name)
-		_, err := fmt.Scanf("%s", &location)
-		if err != nil {
-			return err
-		}
-		if _, err = os.Stat(location); err != nil {
-			fmt.Printf("Please provide a valid location name. %s has error %v", location, err)
-		} else {
-			dev = location
-		}
-	}
-	fmt.Printf("Running dd to put %v onto %v\n", file, dev)
+	fmt.Printf("Running dd to put %v onto %v", file, dev)
 	args := []string{"dd", "if=" + file, "of=" + dev}
 	msg, err := exec.Command("sudo", args...).CombinedOutput()
 	if err != nil {
@@ -280,11 +278,11 @@ func dd(name, dev, file string) error {
 }
 
 func kerndd() error {
-	return dd("Kernel image", *kern, "newKern")
+	return dd("Kernel image", kernDev, "newKern")
 }
 
 func rootdd() error {
-	return dd("tcz CPIO archive", *root, "tcz.cpio")
+	return dd("tcz CPIO archive", rootDev, "tcz.cpio")
 }
 
 func lsr(dirs []string, w io.Writer) error {
