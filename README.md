@@ -7,11 +7,16 @@ NiChrome
 # Description
 Things we need for NiChrome.
 
+To test out USB stick creation, you will need a ChromeOS-formatted boot stick with the right partitions. We don't know how to create those yet. One way to get such an image is with the chromeos recovery tool, found here:
+https://chrome.google.com/webstore/detail/chromebook-recovery-utili/jndclpdbaamdhonoechobihbbiimdgai?hl=en
+
+You can pick any chromebook to get an image from, since the partition layout is the same on all of them, and the usb tool replaces the A image anyway. 
+
 To get an image, for both KERN-[AB] and ROOT-[AB], 
 
 Build the usb tool: (cd usb && go build .)
 
-Plug in a chromeos-formatted USB stick (TODO: how do we correctly do this formatting)
+Plug in the chromeos-formatted USB stick.
 
 ./usb/usb -fetch=true -dev=/dev/your-usb-stick
 
