@@ -7,5 +7,19 @@ NiChrome
 # Description
 Things we need for NiChrome.
 
-Link to the celes image for NiChrome available upon request.
-Just use "sudo dd if=CelesNiChrome of=/dev/sda2" or whatever partition you want instead of /dev/sda2.
+To get an image, for both KERN-[AB] and ROOT-[AB], 
+
+Build the usb tool: (cd usb && go build .)
+
+Plug in a chromeos-formatted USB stick (TODO: how do we correctly do this formatting)
+
+./usb/usb -fetch=true -dev=/dev/your-usb-stick
+
+e.g.
+./usb/usb -fetch=true -dev=/dev/sdb
+
+usb will default to /dev/null, which makes it easy to test it. You can also run travis.sh to test.
+
+You can skip the -fetch=true on second or later runs of usb.
+
+This defaults to writing the A image (partitions 2 and 3). To use the B image, invoke usb with -useB=true
