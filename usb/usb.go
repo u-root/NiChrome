@@ -42,6 +42,7 @@ rootwait
 	linuxVersion  = "linux_stable"
 	homeDir       = ""
 	packageList   = []string{
+		"bc",
 		"git",
 		"golang",
 		"build-essential",
@@ -54,6 +55,7 @@ rootwait
 		"libyaml-dev",
 		"liblzma-dev",
 		"uuid-dev",
+		"libssl-dev",
 	}
 )
 
@@ -212,6 +214,9 @@ func buildKernel() error {
 
 	cmd := exec.Command("make", "--directory", "linux-stable", "-j64")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	// TODO: this is OK for now. Later we'll need to do something
+	// with a map and GOARCH.
+	cmd.Env = append(os.Environ(), "ARCH=x86_64")
 	err := cmd.Run()
 	if err != nil {
 		return err
