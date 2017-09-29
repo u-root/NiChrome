@@ -9,6 +9,7 @@ package main
 //TODO in the newest kernel pull the stable one if it fails, then go back to what was there, see the notes on the PR)
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -21,13 +22,16 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/google/uuid"
+	"github.com/u-root/u-root/pkg/gpt"
 )
 
 var (
-	configTxt = []byte(`loglevel=7
+	configTxt = `loglevel=7
 init=/init
 rootwait
-`)
+`
 	fetch    = flag.Bool("fetch", false, "Fetch all the things we need")
 	skiproot = flag.Bool("skiproot", false, "Don't put the root onto usb")
 	skipkern = flag.Bool("skipkern", false, "Don't put the kern onto usb")
@@ -36,6 +40,7 @@ rootwait
 	useB     = flag.Bool("useB", false, "Install on B instead of A.")
 	kernDev  string
 	rootDev  string
+	kernPart = 2
 
 	kernelVersion = "4.12.7"
 	workingDir    = ""
@@ -104,6 +109,7 @@ func setup() error {
 	kernDev, rootDev = *dev+"2", *dev+"3"
 	if *useB {
 		kernDev, rootDev = *dev+"4", *dev+"5"
+		kernPart = 4
 	}
 	return nil
 }
@@ -255,8 +261,25 @@ func buildVbutil() error {
 }
 
 func vbutilIt() error {
+	// Try to read a GPT header from our output file. If we can, add a root_guid
+	// to config.txt, otherwise, don't bother.
+	args := []string{filepath.Join(os.Getenv("GOPATH"), "bin/gpt"), *dev}
+	msg, err := exec.Command("sudo", args...).Output()
+	if err != nil {
+		log.Printf("gpt %v failed (warning only): %v", args, err)
+	}
+	var pg uuid.UUID
+	if err == nil {
+                var g = make([]gpt.GPT, 2)
+		if err := json.NewDecoder(bytes.NewBuffer(msg)).Decode(&g); err != nil {
+			log.Printf("Reading in GPT JSON, warning only: %v", err)
+		} else {
+			pg = uuid.UUID(g[0].Parts[kernPart].UniqueGUID)
+		}
+	}
 	newKern := "newKern"
-	if err := ioutil.WriteFile("config.txt", configTxt, 0644); err != nil {
+	configTxt := fmt.Sprintf("%sguid_root=%s\n", configTxt, pg)
+	if err := ioutil.WriteFile("config.txt", []byte(configTxt), 0644); err != nil {
 		return err
 	}
 	if err := ioutil.WriteFile("nocontent.efi", []byte("no content"), 0777); err != nil {
