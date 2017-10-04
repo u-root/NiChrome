@@ -2,15 +2,24 @@
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/u-root/u-root/pkg/gpt"
 )
 
 // For now we are going to stick with a single
 // version of tcz packages. It's not possible
 // with their design to mix versions.
 const tczs = "/tcz/8.x/*/tcz/*.tcz"
+
+var cmdline = make(map[string]string)
 
 func tczSetup() error {
 	g, err := filepath.Glob(tczs)
@@ -37,23 +46,98 @@ func tczSetup() error {
 	return nil
 }
 
+func parseCmdline() {
+	b, err := ioutil.ReadFile("/proc/cmdline")
+	if err != nil {
+		log.Printf("Can't read command line: %v", err)
+	}
+	for _, s := range strings.Fields(string(b)) {
+		f := strings.SplitN(s, "=", 2)
+		if len(f) == 0 {
+			continue
+		}
+		if len(f) == 1 {
+			f = []string{f[0], "1"}
+		}
+		cmdline[f[0]] = f[1]
+	}
+}
+
+// Find the root GUID.
+func findRoot(devs ...string) (string, error) {
+	rg, ok := cmdline["guid_root"]
+	if !ok {
+		return "", fmt.Errorf("No root_guid cmdline parameter")
+	}
+	for _, d := range devs {
+		fi, err := os.Stat(d)
+		if fi == nil || err != nil {
+			log.Print(err)
+			continue
+		}
+		if fi.Mode()&os.ModeType != os.ModeDevice {
+			log.Printf("%v is not a device", d)
+			continue
+		}
+		f, err := os.Open(d)
+		if err != nil {
+			log.Print(err)
+			continue
+		}
+		g, _, err := gpt.New(f)
+		f.Close()
+		if err != nil {
+			log.Print(err)
+			continue
+		}
+		for i, p := range g.Parts {
+			if p.UniqueGUID.String() == rg {
+				log.Printf("%v: GUID %s matches for partition %d (map to %d)\n", d, rg, i, i+2)
+				return fmt.Sprintf("%s%d", d, i+2), nil
+			}
+			log.Printf("%v: part %d, Device GUID %v, GUID %s no match", d, i, p.UniqueGUID.String(), rg)
+		}
+	}
+	return "", fmt.Errorf("A device with that GUID was not found")
+}
+
 func main() {
 	log.Printf("Welcome to NiChrome!")
-	var err error
-	cmd := exec.Command("cpio", "i")
-	if cmd.Stdin, err = os.Open("/dev/sda3"); err == nil {
-		if o, err := cmd.CombinedOutput(); err != nil {
-			log.Printf("cpio of tcz failed (%v, %v); continuing", o, err)
+	parseCmdline()
+
+	var cpio bool
+	// USB sucks.
+	// We've tried a few variants of this loop so far trying for
+	// 10 seconds and waiting for 1 second each time has been the best.
+	for i := 0; i < 10; i++ {
+		r, err := findRoot("/dev/sda", "/dev/sdb", "/dev/mmcblk0")
+		if err != nil {
+			log.Printf("Could not find root: %v", err)
+		} else {
+			log.Printf("Try device %v", r)
+			cmd := exec.Command("cpio", "i")
+			cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+			if cmd.Stdin, err = os.Open(r); err == nil {
+				if err := cmd.Run(); err != nil {
+					log.Printf("cpio of tcz failed %v; continuing", err)
+				} else {
+					cpio = true
+				}
+			} else {
+				log.Printf("Can't open (%v); not trying to cpio it", r)
+			}
+			if cpio {
+				break
+			}
 		}
-	} else {
-		log.Printf("Can't open /dev/sda3 (%v); not trying to cpio it")
+		time.Sleep(time.Second)
 	}
 
 	if err := tczSetup(); err != nil {
 		log.Printf("tczSetup: %v", err)
 	}
 
-	cmd = exec.Command("ip", "addr", "add", "127.0.0.1/24", "lo")
+	cmd := exec.Command("ip", "addr", "add", "127.0.0.1/24", "lo")
 	if o, err := cmd.CombinedOutput(); err != nil {
 		log.Printf("ip link failed(%v, %v); continuing", string(o), err)
 	}

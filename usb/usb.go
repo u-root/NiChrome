@@ -1,10 +1,6 @@
 package main
 
 //include a loading bar
-//TODO: Use filePath.join
-//automated "yes"er updating the config file
-//TODO check if it is a device
-//TODO append method name to error
 //TODO proper output channels when you run commands
 //TODO in the newest kernel pull the stable one if it fails, then go back to what was there, see the notes on the PR)
 import (
@@ -37,7 +33,6 @@ rootwait
 	skipkern = flag.Bool("skipkern", false, "Don't put the kern onto usb")
 	keys     = flag.String("keys", "vboot_reference/tests/devkeys", "where the keys live")
 	dev      = flag.String("dev", "/dev/null", "What device to use")
-	useB     = flag.Bool("useB", false, "Install on B instead of A.")
 	kernDev  string
 	rootDev  string
 	kernPart = 2
@@ -107,10 +102,6 @@ func setup() error {
 		return nil
 	}
 	kernDev, rootDev = *dev+"2", *dev+"3"
-	if *useB {
-		kernDev, rootDev = *dev+"4", *dev+"5"
-		kernPart = 4
-	}
 	return nil
 }
 
@@ -270,11 +261,11 @@ func vbutilIt() error {
 	}
 	var pg uuid.UUID
 	if err == nil {
-                var g = make([]gpt.GPT, 2)
+		var g = make([]gpt.GPT, 2)
 		if err := json.NewDecoder(bytes.NewBuffer(msg)).Decode(&g); err != nil {
 			log.Printf("Reading in GPT JSON, warning only: %v", err)
 		} else {
-			pg = uuid.UUID(g[0].Parts[kernPart].UniqueGUID)
+			pg = uuid.UUID(g[0].Parts[kernPart-1].UniqueGUID)
 		}
 	}
 	newKern := "newKern"
