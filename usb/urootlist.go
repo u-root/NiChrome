@@ -13,6 +13,7 @@ var (
 		"s*/g*/u*/u*/c*/hexdump",
 		"s*/g*/u*/u*/c*/hostname",
 		"s*/g*/u*/u*/c*/ed",
+		"s*/g*/u*/u*/c*/gpt",
 		"s*/g*/u*/u*/c*/init",
 		"s*/g*/u*/u*/c*/insmod",
 		"s*/g*/u*/u*/c*/io",
@@ -42,6 +43,7 @@ var (
 		"s*/g*/u*/u*/c*/wget",
 		"s*/g*/u*/u*/c*/wifi",
 		"s*/g*/u*/u*/c*/xinit",
+		"s*/g*/u*/N*/install",
 		"s*/g*/u*/N*/uinit",
 	}
 )

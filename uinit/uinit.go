@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/u-root/u-root/pkg/gpt"
 )
 
@@ -91,9 +92,18 @@ func findRoot(devs ...string) (string, error) {
 			continue
 		}
 		for i, p := range g.Parts {
+			var zero uuid.UUID
+			if p.UniqueGUID == zero {
+				continue
+			}
 			if p.UniqueGUID.String() == rg {
 				log.Printf("%v: GUID %s matches for partition %d (map to %d)\n", d, rg, i, i+2)
-				return fmt.Sprintf("%s%d", d, i+2), nil
+				// non standard naming. Grumble.
+				var hack string
+				if strings.HasPrefix(d, "/dev/mmc") {
+					hack = "p"
+				}
+				return fmt.Sprintf("%s%s%d", d, hack, i+2), nil
 			}
 			log.Printf("%v: part %d, Device GUID %v, GUID %s no match", d, i, p.UniqueGUID.String(), rg)
 		}
@@ -110,7 +120,7 @@ func main() {
 	// We've tried a few variants of this loop so far trying for
 	// 10 seconds and waiting for 1 second each time has been the best.
 	for i := 0; i < 10; i++ {
-		r, err := findRoot("/dev/sda", "/dev/sdb", "/dev/mmcblk0")
+		r, err := findRoot("/dev/sda", "/dev/sdb", "/dev/mmcblk0", "/dev/mmcblk1")
 		if err != nil {
 			log.Printf("Could not find root: %v", err)
 		} else {
