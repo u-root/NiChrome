@@ -24,8 +24,8 @@ import (
 )
 
 var (
-	configTxt = `loglevel=7
-init=/init
+	configTxt = `loglevel=1
+	init=/init
 rootwait
 `
 	fetch    = flag.Bool("fetch", false, "Fetch all the things we need")

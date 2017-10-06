@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/u-root/u-root/pkg/gpt"
 )
 
@@ -19,14 +20,18 @@ import (
 // with their design to mix versions.
 const tczs = "/tcz/8.x/*/tcz/*.tcz"
 
-var cmdline = make(map[string]string)
+var (
+	cmdline = make(map[string]string)
+	debug = func(string, ...interface{}) {}
+	verbose bool
+)
 
 func tczSetup() error {
 	g, err := filepath.Glob(tczs)
 	if err != nil {
 		log.Printf("Glob of %v: %v", tczs, err)
 	}
-	log.Printf("Tcz file list: %v", g)
+	debug("Tcz file list: %v", g)
 	// Now get the basenames, and then install them.
 	// TODO: fix up tcz to take a path name?
 	// The glob ensured they all end in .tcz.
@@ -37,8 +42,9 @@ func tczSetup() error {
 		tczlist = append(tczlist, b[:len(b)-4])
 	}
 
+	log.Printf("Installing %d tinycore packages...", len(tczlist))
 	cmd := exec.Command("tcz", append([]string{"-v", "8.x"}, tczlist...)...)
-	log.Printf("Get Tczlist: %v", tczlist)
+	log.Printf("Done")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
 		return err
@@ -91,9 +97,18 @@ func findRoot(devs ...string) (string, error) {
 			continue
 		}
 		for i, p := range g.Parts {
+			var zero uuid.UUID
+			if p.UniqueGUID == zero {
+				continue
+			}
 			if p.UniqueGUID.String() == rg {
 				log.Printf("%v: GUID %s matches for partition %d (map to %d)\n", d, rg, i, i+2)
-				return fmt.Sprintf("%s%d", d, i+2), nil
+				// non standard naming. Grumble.
+				var hack string
+				if strings.HasPrefix(d, "/dev/mmc") {
+					hack = "p"
+				}
+				return fmt.Sprintf("%s%s%d", d, hack, i+2), nil
 			}
 			log.Printf("%v: part %d, Device GUID %v, GUID %s no match", d, i, p.UniqueGUID.String(), rg)
 		}
@@ -105,12 +120,17 @@ func main() {
 	log.Printf("Welcome to NiChrome!")
 	parseCmdline()
 
+	if _, ok := cmdline["uinitdebug"]; ok {
+		debug = log.Printf
+		verbose = true
+	}
+
 	var cpio bool
 	// USB sucks.
 	// We've tried a few variants of this loop so far trying for
 	// 10 seconds and waiting for 1 second each time has been the best.
 	for i := 0; i < 10; i++ {
-		r, err := findRoot("/dev/sda", "/dev/sdb", "/dev/mmcblk0")
+		r, err := findRoot("/dev/sda", "/dev/sdb", "/dev/mmcblk0", "/dev/mmcblk1")
 		if err != nil {
 			log.Printf("Could not find root: %v", err)
 		} else {
