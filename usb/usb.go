@@ -1,3 +1,5 @@
+// +build go1.9
+
 package main
 
 //include a loading bar
@@ -28,6 +30,7 @@ var (
 	init=/init
 rootwait
 `
+	apt    = flag.Bool("apt", false, "apt-get all the things we need")
 	fetch    = flag.Bool("fetch", false, "Fetch all the things we need")
 	skiproot = flag.Bool("skiproot", false, "Don't put the root onto usb")
 	skipkern = flag.Bool("skipkern", false, "Don't put the kern onto usb")
@@ -393,7 +396,7 @@ func allFunc() error {
 		{f: tcz, skip: *skiproot || !*fetch, ignore: false, n: "run tcz to create the directory of packages"},
 		{f: cpiotcz, skip: *skiproot, ignore: false, n: "Create the cpio file from tcp"},
 		{f: rootdd, skip: *skiproot, ignore: false, n: "Put the tcz cpio onto the stick"},
-		{f: aptget, skip: *skipkern || !*fetch, ignore: false, n: "apt get"},
+		{f: aptget, skip: !*apt, ignore: false, n: "apt get"},
 		{f: goBuild, skip: *skipkern, ignore: false, n: "Build u-root source"},
 		{f: kernelGet, skip: *skipkern || !*fetch, ignore: false, n: "Git clone the kernel"},
 		{f: firmwareGet, skip: *skipkern || !*fetch, ignore: false, n: "Git clone the firmware files"},
