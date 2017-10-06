@@ -199,6 +199,17 @@ func kernelGet() error {
 	return nil
 }
 
+func firmwareGet() error {
+	var args = []string{"clone", "git://git.kernel.org/pub/scm/linux/kernel/git/iwlwifi/linux-firmware.git"}
+	fmt.Printf("-------- Getting the firmware via git %v\n", args)
+	cmd := exec.Command("git", args...)
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("didn't clone firmware %v", err)
+		return err
+	}
+	return nil
+}
 func buildKernel() error {
 	if err := os.Symlink("/tmp/initramfs.linux_amd64.cpio", fmt.Sprintf("%s/initramfs.linux_amd64.cpio", "linux-stable")); err != nil {
 		fmt.Printf("[warning only] Error creating symlink for initramfs: %v", err)
@@ -385,6 +396,7 @@ func allFunc() error {
 		{f: aptget, skip: *skipkern || !*fetch, ignore: false, n: "apt get"},
 		{f: goBuild, skip: *skipkern, ignore: false, n: "Build u-root source"},
 		{f: kernelGet, skip: *skipkern || !*fetch, ignore: false, n: "Git clone the kernel"},
+		{f: firmwareGet, skip: *skipkern || !*fetch, ignore: false, n: "Git clone the firmware files"},
 		{f: buildKernel, skip: *skipkern, ignore: false, n: "build the kernel"},
 		{f: getVbutil, skip: *skipkern || !*fetch, ignore: false, n: "git clone vbutil"},
 		{f: buildVbutil, skip: *skipkern, ignore: false, n: "build vbutil"},

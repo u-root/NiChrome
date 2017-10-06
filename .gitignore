@@ -1,5 +1,6 @@
 nocontent.efi
 linux-stable
+linux-firmware
 vboot_reference
 config.txt
 newKern
