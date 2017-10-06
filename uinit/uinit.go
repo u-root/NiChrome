@@ -20,14 +20,18 @@ import (
 // with their design to mix versions.
 const tczs = "/tcz/8.x/*/tcz/*.tcz"
 
-var cmdline = make(map[string]string)
+var (
+	cmdline = make(map[string]string)
+	debug = func(string, ...interface{}) {}
+	verbose bool
+)
 
 func tczSetup() error {
 	g, err := filepath.Glob(tczs)
 	if err != nil {
 		log.Printf("Glob of %v: %v", tczs, err)
 	}
-	log.Printf("Tcz file list: %v", g)
+	debug("Tcz file list: %v", g)
 	// Now get the basenames, and then install them.
 	// TODO: fix up tcz to take a path name?
 	// The glob ensured they all end in .tcz.
@@ -38,8 +42,9 @@ func tczSetup() error {
 		tczlist = append(tczlist, b[:len(b)-4])
 	}
 
+	log.Printf("Installing %d tinycore packages...", len(tczlist))
 	cmd := exec.Command("tcz", append([]string{"-v", "8.x"}, tczlist...)...)
-	log.Printf("Get Tczlist: %v", tczlist)
+	log.Printf("Done")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
 		return err
@@ -114,6 +119,11 @@ func findRoot(devs ...string) (string, error) {
 func main() {
 	log.Printf("Welcome to NiChrome!")
 	parseCmdline()
+
+	if _, ok := cmdline["uinitdebug"]; ok {
+		debug = log.Printf
+		verbose = true
+	}
 
 	var cpio bool
 	// USB sucks.
