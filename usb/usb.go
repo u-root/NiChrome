@@ -8,7 +8,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -18,7 +17,6 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -134,28 +132,6 @@ func cleanup() error {
 		if err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-func goCompatibility() error {
-	fmt.Printf("--------Checking Go Compatibility \n")
-	cmd := exec.Command("go", "version")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		return err
-	}
-	// The string is originally in the form: go version go1.9rc2_cl165246139 linux/amd64 where 1.9 is the go version
-	termString, err := strconv.ParseFloat(strings.Split(out.String(), " ")[2][2:5], 64)
-	if err != nil {
-		return err
-	}
-	if termString > 1.7 {
-		fmt.Println("Compatible go version")
-	} else {
-		return errors.New("Please install go v1.7 or greater.")
 	}
 	return nil
 }
@@ -391,7 +367,6 @@ func allFunc() error {
 		{f: check, skip: false, ignore: false, n: "check environment"},
 		{f: setup, skip: false, ignore: false, n: "setup"},
 		{f: cleanup, skip: *skipkern || *skiproot || !*fetch, ignore: false, n: "cleanup"},
-		{f: goCompatibility, skip: *skipkern, ignore: true, n: "Check Go Version"},
 		{f: goGet, skip: *skipkern || !*fetch, ignore: false, n: "Get u-root source"},
 		{f: tcz, skip: *skiproot || !*fetch, ignore: false, n: "run tcz to create the directory of packages"},
 		{f: cpiotcz, skip: *skiproot, ignore: false, n: "Create the cpio file from tcp"},
