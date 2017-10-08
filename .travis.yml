@@ -1,9 +1,15 @@
 sudo: true
 language: go
 go:
-  - 1.8
+  - 1.9.x
 env:
   - "PATH=/home/travis/gopath/bin:$PATH"
+addons:
+  apt:
+    packages:
+    - gcc-4.8
+    - bc
+    - uuid-dev
 before_install:
   - pwd
   - ls -l

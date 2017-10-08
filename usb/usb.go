@@ -1,3 +1,5 @@
+// +build go1.9
+
 package main
 
 //include a loading bar
@@ -28,6 +30,7 @@ var (
 	init=/init
 rootwait
 `
+	apt    = flag.Bool("apt", false, "apt-get all the things we need")
 	fetch    = flag.Bool("fetch", false, "Fetch all the things we need")
 	skiproot = flag.Bool("skiproot", false, "Don't put the root onto usb")
 	skipkern = flag.Bool("skipkern", false, "Don't put the kern onto usb")
@@ -199,6 +202,17 @@ func kernelGet() error {
 	return nil
 }
 
+func firmwareGet() error {
+	var args = []string{"clone", "git://git.kernel.org/pub/scm/linux/kernel/git/iwlwifi/linux-firmware.git"}
+	fmt.Printf("-------- Getting the firmware via git %v\n", args)
+	cmd := exec.Command("git", args...)
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("didn't clone firmware %v", err)
+		return err
+	}
+	return nil
+}
 func buildKernel() error {
 	if err := os.Symlink("/tmp/initramfs.linux_amd64.cpio", fmt.Sprintf("%s/initramfs.linux_amd64.cpio", "linux-stable")); err != nil {
 		fmt.Printf("[warning only] Error creating symlink for initramfs: %v", err)
@@ -382,9 +396,10 @@ func allFunc() error {
 		{f: tcz, skip: *skiproot || !*fetch, ignore: false, n: "run tcz to create the directory of packages"},
 		{f: cpiotcz, skip: *skiproot, ignore: false, n: "Create the cpio file from tcp"},
 		{f: rootdd, skip: *skiproot, ignore: false, n: "Put the tcz cpio onto the stick"},
-		{f: aptget, skip: *skipkern || !*fetch, ignore: false, n: "apt get"},
+		{f: aptget, skip: !*apt, ignore: false, n: "apt get"},
 		{f: goBuild, skip: *skipkern, ignore: false, n: "Build u-root source"},
 		{f: kernelGet, skip: *skipkern || !*fetch, ignore: false, n: "Git clone the kernel"},
+		{f: firmwareGet, skip: *skipkern || !*fetch, ignore: false, n: "Git clone the firmware files"},
 		{f: buildKernel, skip: *skipkern, ignore: false, n: "build the kernel"},
 		{f: getVbutil, skip: *skipkern || !*fetch, ignore: false, n: "git clone vbutil"},
 		{f: buildVbutil, skip: *skipkern, ignore: false, n: "build vbutil"},
