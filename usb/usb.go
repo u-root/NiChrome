@@ -120,7 +120,7 @@ func aptget() error {
 }
 
 func cleanup() error {
-	filesToRemove := [...]string{linuxVersion, "linux-stable", "NiChrome", "vboot_reference"}
+	filesToRemove := [...]string{linuxVersion, "linux-stable", "NiChrome", "vboot_reference", "linux-firmware"}
 	fmt.Printf("-------- Removing problematic files %v\n", filesToRemove)
 	for _, file := range filesToRemove {
 		if _, err := os.Stat(file); err != nil {
