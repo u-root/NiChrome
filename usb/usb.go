@@ -137,7 +137,7 @@ func cleanup() error {
 }
 
 func goGet() error {
-	cmd := exec.Command("go", "get", "github.com/u-root/u-root/")
+	cmd := exec.Command("go", "get", "github.com/u-root/u-root/", "github.com/u-root/wingo", "upspin.io/upspin")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	return cmd.Run()
 }
