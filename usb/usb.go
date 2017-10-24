@@ -166,6 +166,21 @@ func goBuild() error {
 	return nil
 }
 
+func wingo() error {
+	cmd := exec.Command("go", "generate", "github.com/u-root/wingo")
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	cmd = exec.Command("go", "install", "github.com/u-root/wingo")
+	cmd.Env = append(os.Environ(), "GOBIN=" + filepath.Join(workingDir, "usr/bin"))
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func kernelGet() error {
 	var args = []string{"clone", "--depth", "1", "-b", "v4.12.7", "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"}
 	fmt.Printf("-------- Getting the kernel via git %v\n", args)
@@ -369,6 +384,7 @@ func allFunc() error {
 		{f: cleanup, skip: *skipkern || *skiproot || !*fetch, ignore: false, n: "cleanup"},
 		{f: goGet, skip: *skipkern || !*fetch, ignore: false, n: "Get u-root source"},
 		{f: tcz, skip: *skiproot || !*fetch, ignore: false, n: "run tcz to create the directory of packages"},
+		{f: wingo, skip: *skiproot, ignore: false, n: "Build wingo"},
 		{f: cpiotcz, skip: *skiproot, ignore: false, n: "Create the cpio file from tcp"},
 		{f: rootdd, skip: *skiproot, ignore: false, n: "Put the tcz cpio onto the stick"},
 		{f: aptget, skip: !*apt, ignore: false, n: "apt get"},
