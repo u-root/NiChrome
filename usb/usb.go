@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/user"
@@ -28,7 +29,7 @@ var (
 	init=/init
 rootwait
 `
-	apt    = flag.Bool("apt", false, "apt-get all the things we need")
+	apt      = flag.Bool("apt", false, "apt-get all the things we need")
 	fetch    = flag.Bool("fetch", false, "Fetch all the things we need")
 	skiproot = flag.Bool("skiproot", false, "Don't put the root onto usb")
 	skipkern = flag.Bool("skipkern", false, "Don't put the kern onto usb")
@@ -173,9 +174,32 @@ func wingo() error {
 		return err
 	}
 	cmd = exec.Command("go", "install", "github.com/u-root/wingo")
-	cmd.Env = append(os.Environ(), "GOBIN=" + filepath.Join(workingDir, "usr/bin"))
+	cmd.Env = append(os.Environ(), "GOBIN="+filepath.Join(workingDir, "usr/bin"))
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func midori() error {
+	if err := os.MkdirAll("usr/bin", 0755); err != nil {
+		return err
+	}
+	resp, err := http.Get("https://nichromeos.org/index.php/s/3WDZWSb38HmdmKs/download")
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("non-200 HTTP status: %d", resp.StatusCode)
+	}
+	o, err := os.OpenFile("usr/bin/midori", os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0755)
+	if err != nil {
+		return err
+	}
+	defer o.Close()
+	if _, err := io.Copy(o, resp.Body); err != nil {
 		return err
 	}
 	return nil
@@ -385,6 +409,7 @@ func allFunc() error {
 		{f: goGet, skip: *skipkern || !*fetch, ignore: false, n: "Get u-root source"},
 		{f: tcz, skip: *skiproot || !*fetch, ignore: false, n: "run tcz to create the directory of packages"},
 		{f: wingo, skip: *skiproot, ignore: false, n: "Build wingo"},
+		{f: midori, skip: *skiproot || !*fetch, ignore: false, n: "Fetch midori"},
 		{f: cpiotcz, skip: *skiproot, ignore: false, n: "Create the cpio file from tcp"},
 		{f: rootdd, skip: *skiproot, ignore: false, n: "Put the tcz cpio onto the stick"},
 		{f: aptget, skip: !*apt, ignore: false, n: "apt get"},
