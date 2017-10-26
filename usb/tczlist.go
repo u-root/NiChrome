@@ -5,12 +5,10 @@ package main
 var (
 	// Note the -skip needs to be first
 	tczList = []string{
-		"-skip", "wireless-KERNEL",
+		"-skip", "graphics-KERNEL wireless-KERNEL",
 		"aterm",
 		"bash",
 		"strace",
-		"fltk-1.3",
-		"flwm",
 		"freetype",
 		"glib2",
 		"harfbuzz",
@@ -37,11 +35,11 @@ var (
 		"pcre",
 		"wbar",
 		"Xfbdev",
+		"xf86-video-intel",
 		"Xlibs",
 		"Xorg-fonts",
 		"Xprogs",
 		"Xorg-7.7",
-		"opera-12",
 		"wifi",
 	}
 )

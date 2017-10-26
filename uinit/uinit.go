@@ -22,7 +22,7 @@ const tczs = "/tcz/8.x/*/tcz/*.tcz"
 
 var (
 	cmdline = make(map[string]string)
-	debug = func(string, ...interface{}) {}
+	debug   = func(string, ...interface{}) {}
 	verbose bool
 )
 
