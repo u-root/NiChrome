@@ -9,3 +9,15 @@ usb/usb
 *~
 uinit/uinit
 tcz/
+
+# definitely ignore upspin! It may have keys.
+upspin/
+
+# and ignore .ssh. We DO NOT pull in ~/.ssh.
+# if you want .ssh config stuff, you have to put it here.
+# This still scares me however. We might want to make
+# it not a . file -- they're dangerous.
+.ssh/
+
+# we install binaries into usr/bin, ignore it.
+usr/bin/
