@@ -59,6 +59,10 @@ rootwait
 		"uuid-dev",
 		"libssl-dev",
 	}
+	optional = map[string] bool {
+		".ssh": true,
+		"upspin": true
+	}
 )
 
 func cp(inputLoc string, outputLoc string) error {
@@ -138,23 +142,15 @@ func cleanup() error {
 }
 
 func goGet() error {
-	cmd := exec.Command("go", "get", "github.com/u-root/u-root/", "github.com/u-root/wingo", "upspin.io/upspin")
+	cmd := exec.Command("go", "get", "github.com/u-root/u-root/", "github.com/u-root/wingo", "upspin.io/cmd/...")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	return cmd.Run()
 }
 
 func goBuild() error {
 	fmt.Printf("--------Got u-root \n")
-	bbpath := filepath.Join(os.Getenv("GOPATH"), "src/github.com/u-root/u-root/bb")
-	cmd := exec.Command("go", "build", "-x", ".")
-	cmd.Dir = bbpath
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	// We need to run bb in the bb directory. Kind of a flaw in its
-	// operation. Sorry.
-	cmd = exec.Command("./bb", cmdlist...)
+	bbpath := filepath.Join(os.Getenv("GOPATH"), "src/github.com/u-root/u-root")
+	cmd := exec.Command("go", append([]string{"run", "u-root.go", "-build=bb"}, cmdlist...)...)
 	cmd.Dir = bbpath
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -174,6 +170,16 @@ func wingo() error {
 		return err
 	}
 	cmd = exec.Command("go", "install", "github.com/u-root/wingo")
+	cmd.Env = append(os.Environ(), "GOBIN="+filepath.Join(workingDir, "usr/bin"))
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func upspin() error {
+	cmd := exec.Command("go", "install", "upspin.io/cmd/...")
 	cmd.Env = append(os.Environ(), "GOBIN="+filepath.Join(workingDir, "usr/bin"))
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -338,6 +344,9 @@ func lsr(dirs []string, w io.Writer) error {
 	for _, n := range dirs {
 		err = filepath.Walk(n, func(name string, fi os.FileInfo, err error) error {
 			if err != nil {
+				if optional[name] {
+					return nil
+				}
 				return err
 			}
 			if fi.IsDir() {
@@ -379,7 +388,7 @@ func cpiotcz() error {
 		return fmt.Errorf("tcz cpio create: %v", err)
 	}
 	var b bytes.Buffer
-	if err := lsr([]string{"usr", "lib", "tcz"}, &b); err != nil {
+	if err := lsr([]string{"usr", "lib", "tcz", "upspin", ".ssh"}, &b); err != nil {
 		return fmt.Errorf("lsr tcz: %v", err)
 	}
 	cmd := exec.Command("cpio", "-o", "-H", "newc")
@@ -409,6 +418,7 @@ func allFunc() error {
 		{f: goGet, skip: *skipkern || !*fetch, ignore: false, n: "Get u-root source"},
 		{f: tcz, skip: *skiproot || !*fetch, ignore: false, n: "run tcz to create the directory of packages"},
 		{f: wingo, skip: *skiproot, ignore: false, n: "Build wingo"},
+		{f: upspin, skip: *skiproot, ignore: false, n: "Build upspin"},
 		{f: midori, skip: *skiproot || !*fetch, ignore: false, n: "Fetch midori"},
 		{f: cpiotcz, skip: *skiproot, ignore: false, n: "Create the cpio file from tcp"},
 		{f: rootdd, skip: *skiproot, ignore: false, n: "Put the tcz cpio onto the stick"},
