@@ -9,10 +9,10 @@
 			"revisionTime": "2017-08-14T14:36:39Z"
 		},
 		{
-			"checksumSHA1": "mQMB/q6tuvrzPOcERLiigWzoOuk=",
+			"checksumSHA1": "l08AV4PAvTADeNYzIVdHS4Bpsek=",
 			"path": "github.com/u-root/u-root/pkg/gpt",
-			"revision": "722cb446af9b8593b8e35ef0d689a0653a30d7c9",
-			"revisionTime": "2017-10-03T20:52:42Z"
+			"revision": "bf2cf8648a86f2a491af00984c12650804ed167b",
+			"revisionTime": "2017-11-15T15:32:16Z"
 		}
 	],
 	"rootPath": "github.com/u-root/NiChrome"

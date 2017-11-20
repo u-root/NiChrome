@@ -17,6 +17,7 @@ var (
 		"github.com/u-root/u-root/cmds/hostname",
 		"github.com/u-root/u-root/cmds/ed",
 		"github.com/u-root/u-root/cmds/gpt",
+		"github.com/u-root/u-root/cmds/installcommand",
 		"github.com/u-root/u-root/cmds/init",
 		"github.com/u-root/u-root/cmds/insmod",
 		"github.com/u-root/u-root/cmds/io",
@@ -47,7 +48,10 @@ var (
 		"github.com/u-root/u-root/cmds/wget",
 		"github.com/u-root/u-root/cmds/wifi",
 		"github.com/u-root/u-root/cmds/xinit",
-		"github.com/u-root/NiChrome/install",
-		"github.com/u-root/NiChrome/uinit",
+		"github.com/u-root/NiChrome/cmds/install",
+		"github.com/u-root/NiChrome/cmds/uinit",
+		"github.com/u-root/wingo",
+		"upspin.io/cmd/upspin",
+		"upspin.io/cmd/upspinfs",
 	}
 )
