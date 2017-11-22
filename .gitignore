@@ -19,5 +19,8 @@ upspin/
 # it not a . file -- they're dangerous.
 .ssh/
 
+# Also ignore etc
+etc/
+
 # we install binaries into usr/bin, ignore it.
 usr/bin/

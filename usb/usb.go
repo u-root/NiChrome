@@ -59,9 +59,10 @@ rootwait
 		"uuid-dev",
 		"libssl-dev",
 	}
-	optional = map[string] bool {
-		".ssh": true,
+	optional = map[string]bool{
+		".ssh":   true,
 		"upspin": true,
+		"etc":    true,
 	}
 )
 
@@ -150,7 +151,7 @@ func goGet() error {
 func goBuild() error {
 	fmt.Printf("--------Got u-root \n")
 	bbpath := filepath.Join(os.Getenv("GOPATH"), "src/github.com/u-root/u-root")
-	cmd := exec.Command("go", append([]string{"run", "u-root.go", "-build=bb"}, cmdlist...)...)
+	cmd := exec.Command("go", append([]string{"run", "u-root.go"}, cmdlist...)...)
 	cmd.Dir = bbpath
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -160,31 +161,6 @@ func goBuild() error {
 		return err
 	}
 	fmt.Printf("Created the initramfs in /tmp/")
-	return nil
-}
-
-func wingo() error {
-	cmd := exec.Command("go", "generate", "github.com/u-root/wingo")
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	cmd = exec.Command("go", "install", "github.com/u-root/wingo")
-	cmd.Env = append(os.Environ(), "GOBIN="+filepath.Join(workingDir, "usr/bin"))
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func upspin() error {
-	cmd := exec.Command("go", "install", "upspin.io/cmd/...")
-	cmd.Env = append(os.Environ(), "GOBIN="+filepath.Join(workingDir, "usr/bin"))
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	if err := cmd.Run(); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -301,6 +277,12 @@ func vbutilIt() error {
 			log.Printf("Reading in GPT JSON, warning only: %v", err)
 		} else {
 			pg = uuid.UUID(g[0].Parts[kernPart-1].UniqueGUID)
+			// We may not be able to read a GPT, consider the case that dev is /dev/null.
+			// But it is an error for it to be zero if we succeeded in reading it.
+			var zeropg uuid.UUID
+			if pg == zeropg {
+				log.Fatalf("Partition GUID for part %d is zero", kernPart-1)
+			}
 		}
 	}
 	newKern := "newKern"
@@ -388,7 +370,7 @@ func cpiotcz() error {
 		return fmt.Errorf("tcz cpio create: %v", err)
 	}
 	var b bytes.Buffer
-	if err := lsr([]string{"usr", "lib", "tcz", "upspin", ".ssh"}, &b); err != nil {
+	if err := lsr([]string{"usr", "lib", "tcz", "etc", "upspin", ".ssh"}, &b); err != nil {
 		return fmt.Errorf("lsr tcz: %v", err)
 	}
 	cmd := exec.Command("cpio", "-o", "-H", "newc")
@@ -417,8 +399,6 @@ func allFunc() error {
 		{f: cleanup, skip: *skipkern || *skiproot || !*fetch, ignore: false, n: "cleanup"},
 		{f: goGet, skip: *skipkern || !*fetch, ignore: false, n: "Get u-root source"},
 		{f: tcz, skip: *skiproot || !*fetch, ignore: false, n: "run tcz to create the directory of packages"},
-		{f: wingo, skip: *skiproot, ignore: false, n: "Build wingo"},
-		{f: upspin, skip: *skiproot, ignore: false, n: "Build upspin"},
 		{f: chrome, skip: *skiproot || !*fetch, ignore: false, n: "Fetch chrome"},
 		{f: cpiotcz, skip: *skiproot, ignore: false, n: "Create the cpio file from tcp"},
 		{f: rootdd, skip: *skiproot, ignore: false, n: "Put the tcz cpio onto the stick"},
