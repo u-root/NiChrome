@@ -87,6 +87,7 @@ var (
 		"github.com/u-root/u-root/cmds/which",
 		"github.com/u-root/u-root/cmds/wifi",
 		"github.com/u-root/u-root/cmds/xinit",
+		"github.com/u-root/u-root/cmds/boot",
 		"github.com/u-root/NiChrome/cmds/install",
 		"github.com/u-root/NiChrome/cmds/uinit",
 		"github.com/u-root/wingo",
