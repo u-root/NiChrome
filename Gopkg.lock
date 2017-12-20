@@ -10,12 +10,18 @@
 [[projects]]
   branch = "master"
   name = "github.com/u-root/u-root"
-  packages = ["pkg/gpt"]
+  packages = ["pkg/gpt","pkg/uroot/util"]
   revision = "bf2cf8648a86f2a491af00984c12650804ed167b"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sys"
+  packages = ["unix"]
+  revision = "d818ba11af4465e00c1998bd3f8a55603b422290"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "102c7634cd6626392207497edad4ce889793341b25716670a69b429882e71cef"
+  inputs-digest = "f6f27db5149d67ea487089a28563c31d78e50ad98e5cd23abf16c1cf95871687"
   solver-name = "gps-cdcl"
   solver-version = 1

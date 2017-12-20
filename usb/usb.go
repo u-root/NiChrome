@@ -24,6 +24,8 @@ import (
 	"github.com/u-root/u-root/pkg/gpt"
 )
 
+const initramfs = "initramfs.linux_amd64.cpio"
+
 var (
 	configTxt = `loglevel=1
 	init=/init
@@ -35,6 +37,7 @@ rootwait
 	skipkern = flag.Bool("skipkern", false, "Don't put the kern onto usb")
 	keys     = flag.String("keys", "vboot_reference/tests/devkeys", "where the keys live")
 	dev      = flag.String("dev", "/dev/null", "What device to use")
+	config   = flag.String("config", "CONFIG", "Linux config file")
 	kernDev  string
 	rootDev  string
 	kernPart = 2
@@ -143,24 +146,41 @@ func cleanup() error {
 }
 
 func goGet() error {
-	cmd := exec.Command("go", "get", "github.com/u-root/u-root/", "github.com/u-root/wingo", "upspin.io/cmd/...")
+	cmd := exec.Command("go", "get", "github.com/u-root/u-root/", "github.com/u-root/wingo", "upspin.io/cmd/...", "github.com/nsf/godit")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	return cmd.Run()
 }
 
-func goBuild() error {
-	fmt.Printf("--------Got u-root \n")
+func goBuildStatic() error {
+	oFile := filepath.Join(workingDir, "linux-stable", initramfs)
 	bbpath := filepath.Join(os.Getenv("GOPATH"), "src/github.com/u-root/u-root")
-	cmd := exec.Command("go", append([]string{"run", "u-root.go"}, cmdlist...)...)
+	cmd := exec.Command("go", append([]string{"run", "u-root.go", "-o", oFile, "-build=bb"}, staticCmdList...)...)
 	cmd.Dir = bbpath
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
 		return err
 	}
-	if _, err := os.Stat("/tmp/initramfs.linux_amd64.cpio"); err != nil {
+	fmt.Printf("Created %v\n", oFile)
+	return nil
+}
+
+func goBuildDynamic() error {
+	optional := []string{"usr", "lib", "tcz", "etc", "upspin", ".ssh"}
+	var extraFiles string
+	for _, v := range optional {
+		if _, err := os.Stat(v); err != nil {
+			continue
+		}
+		extraFiles = fmt.Sprintf("%s %s:%s", extraFiles, workingDir, v)
+	}
+	bbpath := filepath.Join(os.Getenv("GOPATH"), "src/github.com/u-root/u-root")
+	cmd := exec.Command("go", append([]string{"run", "u-root.go", "-o", filepath.Join(workingDir, initramfs), "-files", extraFiles}, dynamicCmdList...)...)
+	cmd.Dir = bbpath
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
 		return err
 	}
-	fmt.Printf("Created the initramfs in /tmp/")
+	fmt.Printf("Created %v", initramfs)
 	return nil
 }
 
@@ -211,13 +231,8 @@ func firmwareGet() error {
 	return nil
 }
 func buildKernel() error {
-	if err := os.Symlink("/tmp/initramfs.linux_amd64.cpio", fmt.Sprintf("%s/initramfs.linux_amd64.cpio", "linux-stable")); err != nil {
-		fmt.Printf("[warning only] Error creating symlink for initramfs: %v", err)
-	}
-	// NOTE: don't get confused. This means that .config in linux-stable
-	// points to CONFIG, i.e. where we are.
-	if err := cp("CONFIG", "linux-stable/.config"); err != nil {
-		fmt.Printf("[warning only] Error creating symlink for .config: %v", err)
+	if err := cp(*config, "linux-stable/.config"); err != nil {
+		fmt.Printf("copying %v to linux-stable/.config: %v", *config, err)
 	}
 
 	cmd := exec.Command("make", "--directory", "linux-stable", "-j64")
@@ -318,7 +333,7 @@ func kerndd() error {
 }
 
 func rootdd() error {
-	return dd("tcz CPIO archive", rootDev, "tcz.cpio")
+	return dd("tcz initramfs CPIO archive", rootDev, filepath.Join(workingDir, "initramfs.linux_amd64.cpio"))
 }
 
 func lsr(dirs []string, w io.Writer) error {
@@ -364,20 +379,6 @@ func tcz() error {
 	return run(t, append([]string{"-d", "-i=false", "-r=tcz"}, tczList...)...)
 }
 
-func cpiotcz() error {
-	out, err := os.OpenFile("tcz.cpio", os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return fmt.Errorf("tcz cpio create: %v", err)
-	}
-	var b bytes.Buffer
-	if err := lsr([]string{"usr", "lib", "tcz", "etc", "upspin", ".ssh"}, &b); err != nil {
-		return fmt.Errorf("lsr tcz: %v", err)
-	}
-	cmd := exec.Command("cpio", "-o", "-H", "newc")
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = &b, out, os.Stderr
-	return cmd.Run()
-}
-
 func check() error {
 	if os.Getenv("GOPATH") == "" {
 		return fmt.Errorf("You have to set GOPATH.")
@@ -400,11 +401,11 @@ func allFunc() error {
 		{f: goGet, skip: *skipkern || !*fetch, ignore: false, n: "Get u-root source"},
 		{f: tcz, skip: *skiproot || !*fetch, ignore: false, n: "run tcz to create the directory of packages"},
 		{f: chrome, skip: *skiproot || !*fetch, ignore: false, n: "Fetch chrome"},
-		{f: cpiotcz, skip: *skiproot, ignore: false, n: "Create the cpio file from tcp"},
-		{f: rootdd, skip: *skiproot, ignore: false, n: "Put the tcz cpio onto the stick"},
 		{f: aptget, skip: !*apt, ignore: false, n: "apt get"},
-		{f: goBuild, skip: *skipkern, ignore: false, n: "Build u-root source"},
+		{f: goBuildDynamic, skip: *skiproot, ignore: false, n: "Build dynamic initramfs"},
+		{f: rootdd, skip: *skiproot, ignore: false, n: "Put the tcz cpio onto the stick"},
 		{f: kernelGet, skip: *skipkern || !*fetch, ignore: false, n: "Git clone the kernel"},
+		{f: goBuildStatic, skip: *skipkern, ignore: false, n: "Build static initramfs"},
 		{f: firmwareGet, skip: *skipkern || !*fetch, ignore: false, n: "Git clone the firmware files"},
 		{f: buildKernel, skip: *skipkern, ignore: false, n: "build the kernel"},
 		{f: getVbutil, skip: *skipkern || !*fetch, ignore: false, n: "git clone vbutil"},
