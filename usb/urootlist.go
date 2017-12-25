@@ -3,7 +3,7 @@
 package main
 
 var (
-	cmdlist = []string{
+	staticCmdList = []string{
 		"github.com/u-root/u-root/cmds/ansi",
 		"github.com/u-root/u-root/cmds/archive",
 		"github.com/u-root/u-root/cmds/builtin",
@@ -90,8 +90,12 @@ var (
 		"github.com/u-root/u-root/cmds/boot",
 		"github.com/u-root/NiChrome/cmds/install",
 		"github.com/u-root/NiChrome/cmds/uinit",
-		"github.com/u-root/wingo",
-		"upspin.io/cmd/upspin",
-		"upspin.io/cmd/upspinfs",
 	}
+	dynamicCmdList = append(staticCmdList, []string{
+		"github.com/u-root/NiChrome/cmds/install",
+		"github.com/u-root/NiChrome/cmds/uinit",
+		"github.com/u-root/wingo",
+		"github.com/nsf/godit",
+		"upspin.io/cmd/upspin",
+		"upspin.io/cmd/upspinfs"}...)
 )

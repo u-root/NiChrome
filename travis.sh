@@ -10,5 +10,7 @@ echo "Check vendored dependencies"
 (cd usb && go build .)
 ./usb/usb -fetch=true -dev=/dev/null
 
-cpio -ivt < /tmp/initramfs.linux_amd64.cpio
+# in case of emergency break glass
+# cpio -ivt < initramfs.linux_amd64.cpio
+# cpio -ivt < linux-stabld/initramfs.linux_amd64.cpio
 

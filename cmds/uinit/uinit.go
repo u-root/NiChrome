@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/u-root/u-root/pkg/gpt"
+	"github.com/u-root/u-root/pkg/uroot/util"
 )
 
 // For now we are going to stick with a single
@@ -135,13 +136,17 @@ func main() {
 			log.Printf("Could not find root: %v", err)
 		} else {
 			log.Printf("Try device %v", r)
-			cmd := exec.Command("cpio", "i")
-			cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+			cmd := exec.Command("cpio", "-v", "i")
 			if cmd.Stdin, err = os.Open(r); err == nil {
-				if err := cmd.Run(); err != nil {
+				o, err := cmd.CombinedOutput()
+				if err != nil {
 					log.Printf("cpio of tcz failed %v; continuing", err)
 				} else {
 					cpio = true
+				}
+				err = ioutil.WriteFile(r+".log", o, 0666)
+				if err != nil {
+					log.Printf("Can't write log file: %v", err)
 				}
 			} else {
 				log.Printf("Can't open (%v); not trying to cpio it", r)
@@ -155,6 +160,48 @@ func main() {
 
 	if err := tczSetup(); err != nil {
 		log.Printf("tczSetup: %v", err)
+	}
+
+	// buildbin was not populated, potentially, so we have to do it again.
+	c, err := filepath.Glob("/src/github.com/u-root/*/cmds/[a-z]*")
+	if err != nil || len(c) == 0 {
+		log.Printf("In a break with tradition, you seem to have NO u-root commands: %v", err)
+	}
+	o, err := filepath.Glob("/src/*/*/*")
+	if err != nil {
+		log.Printf("Your filepath glob for other commands seems busted: %v", err)
+	}
+	c = append(c, o...)
+	for _, v := range c {
+		name := filepath.Base(v)
+		if name == "installcommand" || name == "init" {
+			continue
+		} else {
+			destPath := filepath.Join("/buildbin", name)
+			source := "/buildbin/installcommand"
+			if err := os.Symlink(source, destPath); err != nil {
+				log.Printf("Symlink %v -> %v failed; %v", source, destPath, err)
+			}
+		}
+	}
+
+	a := []string{"build"}
+	envs := os.Environ()
+	debug("envs %v", envs)
+	//os.Setenv("GOBIN", "/buildbin")
+	a = append(a, "-o", "/buildbin/installcommand", filepath.Join(util.CmdsPath, "installcommand"))
+	icmd := exec.Command("go", a...)
+	installenvs := envs
+	installenvs = append(envs, "GOBIN=/buildbin")
+	icmd.Env = installenvs
+	icmd.Dir = "/"
+
+	icmd.Stdin = os.Stdin
+	icmd.Stderr = os.Stderr
+	icmd.Stdout = os.Stdout
+	debug("Run %v", icmd)
+	if err := icmd.Run(); err != nil {
+		log.Printf("%v\n", err)
 	}
 
 	cmd := exec.Command("ip", "addr", "add", "127.0.0.1/24", "lo")
