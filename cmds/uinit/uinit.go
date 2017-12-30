@@ -2,6 +2,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,12 +21,18 @@ import (
 // For now we are going to stick with a single
 // version of tcz packages. It's not possible
 // with their design to mix versions.
-const tczs = "/tcz/8.x/*/tcz/*.tcz"
+const (
+	tczs = "/tcz/8.x/*/tcz/*.tcz"
+	passwd = "root:x:0:0:root:/:/bin/bash\nuser:x:1000:1000:user:/:/bin/bash\n"
+)
 
 var (
-	cmdline = make(map[string]string)
-	debug   = func(string, ...interface{}) {}
-	verbose bool
+	cmdline       = make(map[string]string)
+	debug         = func(string, ...interface{}) {}
+	usernamespace = flag.Bool("usernamespace", false, "Set up user namespaces and spawn login")
+	user          = flag.Bool("user", false, "Ru as a user")
+	login         = flag.Bool("login", false, "Login as a user")
+	verbose       bool
 )
 
 func tczSetup() error {
@@ -117,8 +125,134 @@ func findRoot(devs ...string) (string, error) {
 	return "", fmt.Errorf("A device with that GUID was not found")
 }
 
+func x11(n string, args ...string) error {
+	cmd := exec.Command(n, args...)
+	cmd.Env = append(os.Environ(), "DISPLAY=:0")
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("X11 start %v %v: %v", n, args, err)
+	}
+	return nil
+}
+
+// When we make the transition to a new user we need to set up a new namespace for that user.
+// So far the only thing we know we need to do is remount ubin, tmp, env, and go/pkg
+// The tmp is particularly useful as it avoids races between root-owned files and files
+// for this user.
+var (
+	namespace = []util.Creator{
+		util.Mount{Source: "tmpfs", Target: "/go/pkg/linux_amd64", FSType: "tmpfs"},
+		util.Mount{Source: "tmpfs", Target: "/dev/shm", FSType: "tmpfs"},
+		util.Mount{Source: "tmpfs", Target: "/ubin", FSType: "tmpfs"},
+		util.Mount{Source: "tmpfs", Target: "/pkg", FSType: "tmpfs"},
+	}
+	rootFileSystem = []util.Creator{
+		// fusermount requires this. When we write our own we can remove this.
+		util.Symlink{NewPath: "/etc/mtab", Target: "/proc/mounts"},
+		// Sigh.
+		util.Symlink{NewPath: "/bin/sh", Target: "/bin/bash"},
+	}
+)
+
+func xrun() error {
+	// At this point we are still root.
+	if err := os.Symlink("/usr/local/bin/bash", "/bin/bash"); err != nil {
+		return err
+	}
+	if err := os.Symlink("/lib/ld-linux-x86-64.so.2", "/lib64/ld-linux-x86-64.so.2"); err != nil {
+		return err
+	}
+	go func() {
+		cmd := exec.Command("Xfbdev")
+		cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+		if err := cmd.Run(); err != nil {
+			log.Fatalf("X11 startup: %v", err)
+		}
+	}()
+	for {
+		s, err := filepath.Glob("/tmp/.X*/X?")
+		if err != nil {
+			return err
+		}
+		if len(s) > 0 {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	return nil
+}
+
+func dousernamespace() error {
+	// start us as a child again with a private name space.
+	// Limitations of the Go runtime mandate doing it this way.
+
+	// due to limits of Go runtime we have to run ourselves again with -login
+	// and build a namespace.
+	cmd := exec.Command("/bbin/uinit", "-login")
+	cmd.SysProcAttr = &syscall.SysProcAttr{Unshareflags: syscall.CLONE_NEWNS}
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("donamespace: %v", err)
+	}
+	return nil
+}
+
+func dologin() error {
+	// Here we need to create the new namespace and then start our children.
+	var err error
+	for _, c := range namespace {
+		if err = c.Create(); err != nil {
+			return fmt.Errorf("Error creating %s: %vi; not starting user x11 programs", c, err)
+		}
+	}
+
+	if err == nil {
+		// due to limits of Go runtime we have to run ourselves again with -user.
+		cmd := exec.Command("/bbin/uinit", "-user")
+		cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: 1000, Gid: 1000, NoSetGroups: true}}
+		cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("X11 user startup: %v", err)
+		}
+	}
+	return nil
+}
+
+func xrunuser() error {
+	for _, f := range []string{"wingo", "flwm", "AppChrome", "chrome"} {
+		log.Printf("Run %v", f)
+		go x11(f)
+	}
+
+	// we block on the aterm. When the aterm exits, we do too.
+	return x11("/usr/local/bin/aterm")
+}
+
 func main() {
 	log.Printf("Welcome to NiChrome!")
+	flag.Parse()
+	if *usernamespace {
+		if err := dousernamespace(); err != nil {
+			log.Fatal(err)
+		}
+		os.Exit(0)
+	}
+
+	if *login {
+		if err := dologin(); err != nil {
+			log.Fatal(err)
+		}
+		os.Exit(0)
+	}
+
+	if *user {
+		log.Printf("Starting up user mode processes")
+		if err := xrunuser(); err != nil {
+			log.Fatalf("x11 user failed: %v", err)
+		}
+		os.Exit(0)
+	}
+
 	parseCmdline()
 
 	if _, ok := cmdline["uinitdebug"]; ok {
@@ -136,17 +270,13 @@ func main() {
 			log.Printf("Could not find root: %v", err)
 		} else {
 			log.Printf("Try device %v", r)
-			cmd := exec.Command("cpio", "-v", "i")
+			cmd := exec.Command("cpio", "i")
+			cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 			if cmd.Stdin, err = os.Open(r); err == nil {
-				o, err := cmd.CombinedOutput()
-				if err != nil {
+				if err := cmd.Run(); err != nil {
 					log.Printf("cpio of tcz failed %v; continuing", err)
 				} else {
 					cpio = true
-				}
-				err = ioutil.WriteFile(r+".log", o, 0666)
-				if err != nil {
-					log.Printf("Can't write log file: %v", err)
 				}
 			} else {
 				log.Printf("Can't open (%v); not trying to cpio it", r)
@@ -208,11 +338,38 @@ func main() {
 	if o, err := cmd.CombinedOutput(); err != nil {
 		log.Printf("ip link failed(%v, %v); continuing", string(o), err)
 	}
-	if err := os.Symlink("/bin/bash", "/bin/sh"); err != nil {
-		log.Printf("symlink /bin/bash to /bin/sh: ", err)
+
+	for _, c := range rootFileSystem {
+		if err = c.Create(); err != nil {
+			log.Printf("Error creating %s: %vi; not starting user x11 programs", c, err)
+		}
 	}
-	cmd = exec.Command("xinit")
-	if o, err := cmd.CombinedOutput(); err != nil {
-		log.Printf("xinit failed (%v, %v); continuing", string(o), err)
+
+	// AppImages need /dev/fuse to be 0666, even though they also use the
+	// suid fusermount, which does not need /dev/fuse to be 0666. Oh well.
+	if err := os.Chmod("/dev/fuse", 0666); err != nil {
+		log.Printf("chmod of /dev/fuse to 0666 failed: %v", err)
+	}
+
+	// If they did not supply a password file, we have to supply a simple
+	// one or tools like fusermount will fail. We hope soon to have a
+	// u-root implementation of fusermount that's not so particular.
+	if _, err := os.Stat("/etc/passwd"); err != nil {
+		if err := ioutil.WriteFile("/etc/passwd", []byte(passwd), os.FileMode(0644)); err != nil {
+			log.Printf("Error creating /etc/passwd: %v", err)
+		}
+	}
+	if err := xrun(); err != nil {
+		log.Fatalf("xrun failed %v:", err)
+	}
+
+	if err := dousernamespace(); err != nil {
+		log.Printf("dousernamespace: %v", err)
+	}
+
+	// kick off one user shell so they can do what needs to be done.
+	// When this ends we exit everything.
+	if err := x11("/usr/local/bin/aterm"); err != nil {
+		log.Printf("Starting root aterm: %v", err)
 	}
 }
