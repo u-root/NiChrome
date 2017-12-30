@@ -165,7 +165,7 @@ func goBuildStatic() error {
 }
 
 func goBuildDynamic() error {
-	optional := []string{"usr", "lib", "tcz", "etc", "upspin", ".ssh"}
+	optional := []string{"ubin", "usr", "lib", "tcz", "etc", "upspin", ".ssh"}
 	var extraFiles string
 	for _, v := range optional {
 		if _, err := os.Stat(v); err != nil {

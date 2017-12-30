@@ -144,6 +144,7 @@ var (
 		util.Mount{Source: "tmpfs", Target: "/go/pkg/linux_amd64", FSType: "tmpfs"},
 		util.Mount{Source: "tmpfs", Target: "/dev/shm", FSType: "tmpfs"},
 		util.Mount{Source: "tmpfs", Target: "/ubin", FSType: "tmpfs"},
+		util.Dir{Name: "/pkg", Mode: 0777},
 		util.Mount{Source: "tmpfs", Target: "/pkg", FSType: "tmpfs"},
 	}
 	rootFileSystem = []util.Creator{
@@ -292,6 +293,15 @@ func main() {
 		log.Printf("tczSetup: %v", err)
 	}
 
+	cmd := exec.Command("ip", "addr", "add", "127.0.0.1/24", "lo")
+	if o, err := cmd.CombinedOutput(); err != nil {
+		log.Printf("ip link failed(%v, %v); continuing", string(o), err)
+	}
+
+	if err := xrun(); err != nil {
+		log.Fatalf("xrun failed %v:", err)
+	}
+
 	// buildbin was not populated, potentially, so we have to do it again.
 	c, err := filepath.Glob("/src/github.com/u-root/*/cmds/[a-z]*")
 	if err != nil || len(c) == 0 {
@@ -334,11 +344,6 @@ func main() {
 		log.Printf("%v\n", err)
 	}
 
-	cmd := exec.Command("ip", "addr", "add", "127.0.0.1/24", "lo")
-	if o, err := cmd.CombinedOutput(); err != nil {
-		log.Printf("ip link failed(%v, %v); continuing", string(o), err)
-	}
-
 	for _, c := range rootFileSystem {
 		if err = c.Create(); err != nil {
 			log.Printf("Error creating %s: %vi; not starting user x11 programs", c, err)
@@ -358,9 +363,6 @@ func main() {
 		if err := ioutil.WriteFile("/etc/passwd", []byte(passwd), os.FileMode(0644)); err != nil {
 			log.Printf("Error creating /etc/passwd: %v", err)
 		}
-	}
-	if err := xrun(); err != nil {
-		log.Fatalf("xrun failed %v:", err)
 	}
 
 	if err := dousernamespace(); err != nil {

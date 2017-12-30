@@ -2,26 +2,23 @@
 
 
 [[projects]]
+  branch = "master"
   name = "github.com/google/uuid"
   packages = ["."]
-  revision = "064e2069ce9c359c118179501254f67d7d37ba24"
-  version = "0.2"
+  revision = "dec09d789f3dba190787f8b4454c7d3c936fed9e"
 
 [[projects]]
   branch = "master"
   name = "github.com/u-root/u-root"
-  packages = ["pkg/gpt","pkg/uroot/util"]
-  revision = "bf2cf8648a86f2a491af00984c12650804ed167b"
-
-[[projects]]
-  branch = "master"
-  name = "golang.org/x/sys"
-  packages = ["unix"]
-  revision = "d818ba11af4465e00c1998bd3f8a55603b422290"
+  packages = [
+    "pkg/gpt",
+    "pkg/uroot/util"
+  ]
+  revision = "1cf9f48ee2cfb12587a603dee9f13fd2892e7442"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f6f27db5149d67ea487089a28563c31d78e50ad98e5cd23abf16c1cf95871687"
+  inputs-digest = "6ea9ff8001cb2462bfb8d1d9f7cf800d6ca5f3180b1b85a61636f786dcf5f3cb"
   solver-name = "gps-cdcl"
   solver-version = 1

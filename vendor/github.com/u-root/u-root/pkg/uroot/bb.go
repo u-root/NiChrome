@@ -102,7 +102,7 @@ func init() {
         // spawn the first shell. We had been running the shell as pid 1
         // but that makes control tty stuff messy. We think.
         cloneFlags := uintptr(0)
-	for _, v := range []string{"/inito", "/ubin/uinit", "/ubin/rush"} {
+	for _, v := range []string{"/inito", "/bbin/uinit", "/bbin/rush"} {
 		cmd := exec.Command(v)
 		cmd.Stdin = os.Stdin
 		cmd.Stderr = os.Stderr
@@ -144,12 +144,12 @@ type bbBuilder struct {
 // BBBuild rewrites the source files of the packages given to create one
 // busybox-like binary containing all commands in `opts.Packages`.
 func BBBuild(opts BuildOpts) (ArchiveFiles, error) {
-	urootDir, err := opts.Env.FindPackageDir("github.com/u-root/u-root")
+	urootPkg, err := opts.Env.Package("github.com/u-root/u-root")
 	if err != nil {
 		return ArchiveFiles{}, err
 	}
 
-	bbshDir := filepath.Join(urootDir, "bbsh")
+	bbshDir := filepath.Join(urootPkg.Dir, "bbsh")
 	// Blow bbsh away before trying to re-create it.
 	if err := os.RemoveAll(bbshDir); err != nil {
 		return ArchiveFiles{}, err
@@ -182,7 +182,7 @@ func BBBuild(opts BuildOpts) (ArchiveFiles, error) {
 	}
 
 	// Move rush shell over.
-	p, err := opts.Env.ListPackage("github.com/u-root/u-root/cmds/rush")
+	p, err := opts.Env.Package("github.com/u-root/u-root/cmds/rush")
 	if err != nil {
 		return ArchiveFiles{}, err
 	}
@@ -206,17 +206,17 @@ func BBBuild(opts BuildOpts) (ArchiveFiles, error) {
 		return ArchiveFiles{}, err
 	}
 
-	// Compile rush + commands to /ubin/rush.
+	// Compile rush + commands to /bbin/rush.
 	rushPath := filepath.Join(opts.TempDir, "rush")
 	if err := opts.Env.Build("github.com/u-root/u-root/bbsh", rushPath, golang.BuildOpts{}); err != nil {
 		return ArchiveFiles{}, err
 	}
-	if err := builder.af.AddFile(rushPath, "ubin/rush"); err != nil {
+	if err := builder.af.AddFile(rushPath, "bbin/rush"); err != nil {
 		return ArchiveFiles{}, err
 	}
 
 	// Symlink from /init to rush.
-	if err := builder.af.AddRecord(cpio.Symlink("init", "/ubin/rush")); err != nil {
+	if err := builder.af.AddRecord(cpio.Symlink("init", "/bbin/rush")); err != nil {
 		return ArchiveFiles{}, err
 	}
 	return builder.af, nil
@@ -371,8 +371,8 @@ func (p *Package) writeTemplate(path string, text string) error {
 	return writeGoFile(path, b.Bytes())
 }
 
-func getPackage(opts BuildOpts, pkgPath string) (*Package, error) {
-	p, err := opts.Env.ListPackage(pkgPath)
+func getPackage(opts BuildOpts, importPath string) (*Package, error) {
+	p, err := opts.Env.Package(importPath)
 	if err != nil {
 		return nil, err
 	}
@@ -440,5 +440,5 @@ func (b *bbBuilder) moveCommand(pkgPath string) error {
 	b.initMap += "\n\t\"" + p.name + "\": " + p.name + "Init,"
 
 	// Add a symlink to our bbsh.
-	return b.af.AddRecord(cpio.Symlink(filepath.Join("ubin", p.name), "/ubin/rush"))
+	return b.af.AddRecord(cpio.Symlink(filepath.Join("bbin", p.name), "/bbin/rush"))
 }
