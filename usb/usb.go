@@ -171,7 +171,7 @@ func goBuildDynamic() error {
 		if _, err := os.Stat(v); err != nil {
 			continue
 		}
-		extraFiles = fmt.Sprintf("%s %s:%s", extraFiles, workingDir, v)
+		extraFiles = fmt.Sprintf("%s %s:%s", extraFiles, filepath.Join(workingDir, v), v)
 	}
 	bbpath := filepath.Join(os.Getenv("GOPATH"), "src/github.com/u-root/u-root")
 	cmd := exec.Command("go", append([]string{"run", "u-root.go", "-o", filepath.Join(workingDir, initramfs), "-files", extraFiles}, dynamicCmdList...)...)
@@ -188,7 +188,7 @@ func chrome() error {
 	if err := os.MkdirAll("usr/bin", 0755); err != nil {
 		return err
 	}
-	resp, err := http.Get("https://nichromeos.org/index.php/s/cmQ1Siydrgk4Mip/download")
+	resp, err := http.Get("https://nichromeos.org/index.php/s/NEC5bZOqm0atPYe/download")
 	if err != nil {
 		return err
 	}
