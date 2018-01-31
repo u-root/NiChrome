@@ -279,6 +279,12 @@ func buildVbutil() error {
 
 }
 
+func installUrootGpt() error {
+	cmd := exec.Command("go", "install", "-x", "github.com/u-root/u-root/cmds/gpt/")
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	return cmd.Run()
+}
+
 func vbutilIt() error {
 	// Try to read a GPT header from our output file. If we can, add a root_guid
 	// to config.txt, otherwise, don't bother.
@@ -412,6 +418,7 @@ func allFunc() error {
 		{f: buildKernel, skip: *skipkern, ignore: false, n: "build the kernel"},
 		{f: getVbutil, skip: *skipkern || !*fetch, ignore: false, n: "git clone vbutil"},
 		{f: buildVbutil, skip: *skipkern, ignore: false, n: "build vbutil"},
+		{f: installUrootGpt, skip: *skipkern, ignore: false, n: "install u-root gpt"},
 		{f: vbutilIt, skip: *skipkern, ignore: false, n: "vbutil and create a kernel image"},
 		{f: kerndd, skip: *skipkern, ignore: false, n: "Put the kernel image onto the stick"},
 	}
