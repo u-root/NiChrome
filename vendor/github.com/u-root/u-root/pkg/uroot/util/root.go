@@ -20,8 +20,12 @@ const (
 	// Not all these paths may be populated or even exist but OTOH they might.
 	PATHHEAD = "/ubin"
 	PATHMID  = "/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/bin:/usr/local/sbin"
-	PATHTAIL = "/buildbin"
+	PATHTAIL = "/buildbin:/bbin"
 	CmdsPath = "github.com/u-root/u-root/cmds"
+)
+
+var (
+	CmdsGlob = []string{"github.com/u-root/*/cmds", "*/*/*", "*/*"}
 )
 
 type Creator interface {
@@ -127,7 +131,6 @@ var (
 		Dir{Name: "/go/pkg/linux_amd64", Mode: 0777},
 
 		Dir{Name: "/etc", Mode: 0777},
-		File{Name: "/etc/resolv.conf", Contents: `nameserver 8.8.8.8`, Mode: 0644},
 
 		Dir{Name: "/proc", Mode: 0555},
 		Mount{Target: "/proc", FSType: "proc"},
