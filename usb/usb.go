@@ -165,16 +165,16 @@ func goBuildStatic() error {
 }
 
 func goBuildDynamic() error {
-	optional := []string{"usr", "lib", "tcz", "etc", "upspin", ".ssh"}
-	var extraFiles string
-	for _, v := range optional {
+	args := []string{"run", "u-root.go", "-o", filepath.Join(workingDir, initramfs)}
+	for _, v := range []string{"usr", "lib", "tcz", "etc", "upspin", ".ssh"} {
 		if _, err := os.Stat(v); err != nil {
 			continue
 		}
-		extraFiles = fmt.Sprintf("%s %s:%s", extraFiles, filepath.Join(workingDir, v), v)
+		args = append(args, "-files", filepath.Join(workingDir, v)+":"+v)
 	}
+	args = append(args, dynamicCmdList...)
 	bbpath := filepath.Join(os.Getenv("GOPATH"), "src/github.com/u-root/u-root")
-	cmd := exec.Command("go", append([]string{"run", "u-root.go", "-o", filepath.Join(workingDir, initramfs), "-files", extraFiles}, dynamicCmdList...)...)
+	cmd := exec.Command("go", args...)
 	cmd.Dir = bbpath
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {

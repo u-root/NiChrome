@@ -25,7 +25,7 @@ type builtin func(c *Command) error
 
 // TODO: probably have one builtin map and use it for both types?
 var (
-	urpath   = "/go/bin:/ubin:/buildbin:/bin:/usr/local/bin:"
+	urpath   = "/go/bin:/ubin:/buildbin:/bbin:/bin:/usr/local/bin:"
 	builtins = make(map[string]builtin)
 	// Some builtins really want to be forked off, esp. in the busybox case.
 	forkBuiltins = make(map[string]builtin)
@@ -202,16 +202,6 @@ func command(c *Command) error {
 func main() {
 	b := bufio.NewReader(os.Stdin)
 
-	defer func() {
-		switch err := recover().(type) {
-		case nil:
-		case error:
-			log.Fatalf("Bummer: %v", err)
-		default:
-			log.Fatalf("unexpected panic value: %T(%v)", err, err)
-		}
-	}()
-
 	// we use path.Base in case they type something like ./cmd
 	if f, ok := forkBuiltins[path.Base(os.Args[0])]; ok {
 		if err := f(&Command{cmd: os.Args[0], Cmd: &exec.Cmd{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr}, argv: os.Args[1:]}); err != nil {
@@ -245,20 +235,20 @@ func main() {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			continue
 		}
-		for i := range cmds {
-			if err := command(cmds[i]); err != nil {
+		for _, c := range cmds {
+			if err := command(c); err != nil {
 				fmt.Fprintf(os.Stderr, "%v\n", err)
-				if cmds[i].link == "||" {
+				if c.link == "||" {
 					continue
 				}
 				// yes, not needed, but useful so you know
 				// what goes on here.
-				if cmds[i].link == "&&" {
+				if c.link == "&&" {
 					break
 				}
 				break
 			} else {
-				if cmds[i].link == "||" {
+				if c.link == "||" {
 					break
 				}
 			}
