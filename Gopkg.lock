@@ -57,10 +57,10 @@
   version = "v0.4.1"
 
 [[projects]]
+  branch = "master"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
-  revision = "925541529c1fa6821df4e44ce2723319eb2be768"
-  version = "v1.0.0"
+  revision = "bbd03ef6da3a115852eaf24c8a1c46aeb39aa175"
 
 [[projects]]
   branch = "master"
@@ -102,16 +102,18 @@
   branch = "master"
   name = "github.com/u-root/u-root"
   packages = [
+    "pkg/cpio",
+    "pkg/cpio/newc",
     "pkg/gpt",
     "pkg/uroot/util"
   ]
-  revision = "1cf9f48ee2cfb12587a603dee9f13fd2892e7442"
+  revision = "2cd7a9c6b9fce576bd6ee12e3eed3b74040e6afc"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "b417086c80e91bfa321ef761574721644b8b9f61"
+  revision = "2fb46b16b8dda405028c50f7c7f0f9dd1fa6bfb1"
 
 [[projects]]
   branch = "master"
@@ -123,11 +125,11 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "8f27ce8a604014414f8dfffc25cbcde83a3f2216"
+  revision = "37707fdb30a5b38865cfb95e5aab41707daec7fd"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "df13ee942e798e974f37e5cf9fd45d169ff8a4c1e80430b93612cc3e44d28226"
+  inputs-digest = "4f2aa588ba7bf1be09b4ab49a0c5ac94392dddca869744c447c5024cad24523d"
   solver-name = "gps-cdcl"
   solver-version = 1
