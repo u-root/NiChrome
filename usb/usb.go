@@ -21,6 +21,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/u-root/u-root/pkg/cpio"
+	_ "github.com/u-root/u-root/pkg/cpio/newc"
 	"github.com/u-root/u-root/pkg/gpt"
 )
 
@@ -165,7 +167,8 @@ func goBuildStatic() error {
 }
 
 func goBuildDynamic() error {
-	args := []string{"run", "u-root.go", "-o", filepath.Join(workingDir, initramfs)}
+	inramfs := initramfs + ".in"
+	args := []string{"run", "u-root.go", "-o", filepath.Join(workingDir, inramfs)}
 	for _, v := range []string{"usr", "lib", "tcz", "etc", "upspin", ".ssh"} {
 		if _, err := os.Stat(v); err != nil {
 			continue
@@ -181,6 +184,50 @@ func goBuildDynamic() error {
 		return err
 	}
 	fmt.Printf("Created %v", initramfs)
+	// Now the initramfs is in a weird state. Permissions may be wrong and we certainly don't want
+	// weird user names. So read it in, make it all root:root, and if any directory is o-r,o-x fix
+	// that too.
+	archiver, err := cpio.Format("newc")
+	if err != nil {
+		return err
+	}
+
+	// todo: cpio package ought to have a passthrough mode where
+	// we call it with io.Reader and io.Writer and it calls us
+	// back for each record. Let's wait until we see how we think
+	// it ought to work.
+	in, err := os.Open(inramfs)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	out, err := os.OpenFile(initramfs, os.O_WRONLY|os.O_CREATE, 0755)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	rr := archiver.Reader(in)
+	ww := archiver.Writer(out)
+	for {
+		rec, err := rr.ReadRecord()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("error reading record: %v", err)
+		}
+		rec.UID, rec.GID = 0, 0
+		// mirror the group settings into the o settings.
+		// I am not sure there's a better way to do this.
+		rec.Mode |= (rec.Mode >> 3) & 7
+
+		if err := ww.WriteRecord(rec); err != nil {
+			return fmt.Errorf("Writing record failed: %v", err)
+		}
+	}
+	if err := ww.WriteTrailer(); err != nil {
+		return fmt.Errorf("Error writing trailer record: %v", err)
+	}
 	return nil
 }
 
