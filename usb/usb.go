@@ -19,6 +19,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/google/uuid"
 	"github.com/u-root/u-root/pkg/gpt"
@@ -95,6 +96,7 @@ func tildeExpand(input string) string {
 
 func setup() error {
 	dir, err := os.Getwd()
+	syscall.Umask(0)
 	if err != nil {
 		return err
 	}
