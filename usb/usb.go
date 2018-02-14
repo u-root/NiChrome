@@ -186,6 +186,22 @@ func goBuildDynamic() error {
 	return nil
 }
 
+func getSUIDbinaries() error {
+	if err := os.MkdirAll("usr/bin", 0755); err != nil {
+		return err
+	}
+	binaries := []string{"/bin/fusermount"}
+	for _, b := range binaries {
+		cmd := exec.Command("sudo", "rsync", "-av", b, "usr/bin/")
+		cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+		cmd.Env = os.Environ()
+		if err := cmd.Run(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func chrome() error {
 	if err := os.MkdirAll("usr/bin", 0755); err != nil {
 		return err
@@ -408,6 +424,7 @@ func allFunc() error {
 		{f: cleanup, skip: *skipkern || *skiproot || !*fetch, ignore: false, n: "cleanup"},
 		{f: goGet, skip: *skipkern || !*fetch, ignore: false, n: "Get u-root source"},
 		{f: tcz, skip: *skiproot || !*fetch, ignore: false, n: "run tcz to create the directory of packages"},
+		{f: getSUIDbinaries, skip: *skiproot, ignore: false, n: "Get SUID binaries"},
 		{f: chrome, skip: *skiproot || !*fetch, ignore: false, n: "Fetch chrome"},
 		{f: aptget, skip: !*apt, ignore: false, n: "apt get"},
 		{f: goBuildDynamic, skip: *skiproot, ignore: false, n: "Build dynamic initramfs"},
