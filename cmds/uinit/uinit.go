@@ -53,7 +53,7 @@ func tczSetup() error {
 
 	log.Printf("Installing %d tinycore packages...", len(tczlist))
 	cmd := exec.Command("tcz", append([]string{"-v", "8.x"}, tczlist...)...)
-	log.Printf("Done")
+	log.Print("Done")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
 		return err
@@ -229,7 +229,7 @@ func xrunuser() error {
 }
 
 func main() {
-	log.Printf("Welcome to NiChrome!")
+	log.Print("Welcome to NiChrome!")
 	flag.Parse()
 	if *usernamespace {
 		if err := dousernamespace(); err != nil {
@@ -246,7 +246,7 @@ func main() {
 	}
 
 	if *user {
-		log.Printf("Starting up user mode processes")
+		log.Print("Starting up user mode processes")
 		if err := xrunuser(); err != nil {
 			log.Fatalf("x11 user failed: %v", err)
 		}
