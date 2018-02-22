@@ -55,10 +55,7 @@ func tczSetup() error {
 	cmd := exec.Command("tcz", append([]string{"-v", "8.x"}, tczlist...)...)
 	log.Print("Done")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	return nil
+	return cmd.Run()
 }
 
 func parseCmdline() {
