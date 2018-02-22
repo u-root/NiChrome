@@ -27,7 +27,10 @@ import (
 	"github.com/u-root/u-root/pkg/gpt"
 )
 
-const initramfs = "initramfs.linux_amd64.cpio"
+const (
+	initramfs = "initramfs.linux_amd64.cpio"
+	threads = runtime.NumCPU() + 2 // Number of threads to use when calling make.
+)
 
 var (
 	configTxt = `loglevel=1
@@ -255,7 +258,7 @@ func buildKernel() error {
 		fmt.Printf("copying %v to linux-stable/.config: %v", *config, err)
 	}
 
-	cmd := exec.Command("make", "--directory", "linux-stable", "-j" + strconv.Itoa(runtime.NumCPU()))
+	cmd := exec.Command("make", "--directory", "linux-stable", "-j" + strconv.Itoa(threads))
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	// TODO: this is OK for now. Later we'll need to do something
 	// with a map and GOARCH.
@@ -286,7 +289,7 @@ func buildVbutil() error {
 		fmt.Printf("couldn't checkout the right branch")
 		return err
 	}
-	cmd = exec.Command("make", "-j" + strconv.Itoa(runtime.NumCPU()))
+	cmd = exec.Command("make", "-j" + strconv.Itoa(threads))
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	cmd.Dir = "vboot_reference"
 	if err := cmd.Run(); err != nil {
