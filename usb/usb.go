@@ -18,6 +18,8 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -253,7 +255,7 @@ func buildKernel() error {
 		fmt.Printf("copying %v to linux-stable/.config: %v", *config, err)
 	}
 
-	cmd := exec.Command("make", "--directory", "linux-stable", "-j64")
+	cmd := exec.Command("make", "--directory", "linux-stable", "-j" + strconv.Itoa(runtime.NumCPU()))
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	// TODO: this is OK for now. Later we'll need to do something
 	// with a map and GOARCH.
@@ -284,7 +286,7 @@ func buildVbutil() error {
 		fmt.Printf("couldn't checkout the right branch")
 		return err
 	}
-	cmd = exec.Command("make", "-j64")
+	cmd = exec.Command("make", "-j" + strconv.Itoa(runtime.NumCPU()))
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	cmd.Dir = "vboot_reference"
 	if err := cmd.Run(); err != nil {
