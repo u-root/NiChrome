@@ -123,10 +123,7 @@ func aptget() error {
 	get = append(get, packageList...)
 	cmd := exec.Command("sudo", get...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	return nil
+	return cmd.Run();
 
 }
 
