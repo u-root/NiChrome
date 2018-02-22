@@ -34,7 +34,7 @@ var (
 	init=/init
 rootwait
 `
-	apt      = flag.Bool("apt", false, "apt-get all the things we need")
+	apt      = flag.Bool("apt", true, "apt-get all the things we need")
 	fetch    = flag.Bool("fetch", false, "Fetch all the things we need")
 	skiproot = flag.Bool("skiproot", false, "Don't put the root onto usb")
 	skipkern = flag.Bool("skipkern", false, "Don't put the kern onto usb")
@@ -121,9 +121,22 @@ func setup() error {
 }
 
 func aptget() error {
-	fmt.Printf("Using apt-get to get %v\n", packageList)
+	missing := []string{}
+	for _, packageName := range packageList {
+		cmd := exec.Command("dpkg", "-s", packageName)
+		if err := cmd.Run(); err != nil {
+			missing = append(missing, packageName)
+		}
+	}
+	
+	if len(missing) == 0 {
+		fmt.Println("No missing dependencies to install")
+		return nil
+	}
+	
+	fmt.Printf("Using apt-get to get %v\n", missing)
 	get := []string{"apt-get", "-y", "install"}
-	get = append(get, packageList...)
+	get = append(get, missing...)
 	cmd := exec.Command("sudo", get...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	return cmd.Run()
