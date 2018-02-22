@@ -27,10 +27,7 @@ import (
 	"github.com/u-root/u-root/pkg/gpt"
 )
 
-const (
-	initramfs = "initramfs.linux_amd64.cpio"
-	threads = runtime.NumCPU() + 2 // Number of threads to use when calling make.
-)
+const initramfs = "initramfs.linux_amd64.cpio"
 
 var (
 	configTxt = `loglevel=1
@@ -73,6 +70,7 @@ rootwait
 		"upspin": true,
 		"etc":    true,
 	}
+	threads = runtime.NumCPU() + 2 // Number of threads to use when calling make.
 )
 
 func cp(inputLoc string, outputLoc string) error {
