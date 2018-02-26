@@ -8,7 +8,7 @@ echo "Check vendored dependencies"
 (dep status)
 
 (cd usb && go build .)
-./usb/usb -fetch=true -dev=/dev/null
+./usb/usb -apt=true -fetch=true -dev=/dev/null
 
 # in case of emergency break glass
 # cpio -ivt < initramfs.linux_amd64.cpio
