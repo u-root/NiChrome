@@ -239,12 +239,12 @@ func chrome() error {
 }
 
 func kernelGet() error {
-	var args = []string{"clone", "--depth", "1", "-b", kernelVersion, "git://git.kernel.org/pub/scm/linux/kernel/git/stable/" + linuxVersion + ".git"}
-	fmt.Printf("-------- Getting the kernel via git %v\n", args)
-	cmd := exec.Command("git", args...)
+	var updateIfExistsOrClone = []string{"git", "-C", linuxVersion, "pull", "||", "git", "clone", "--depth", "1", "-b", kernelVersion, "git://git.kernel.org/pub/scm/linux/kernel/git/stable/" + linuxVersion + ".git"}
+	fmt.Printf("-------- updating or fetching the kernel %v\n", updateIfExistsOrClone)
+	cmd := exec.Command(updateIfExistsOrClone...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("didn't clone kernel %v", err)
+		fmt.Printf("didn't get kernel %v", err)
 		return err
 	}
 	return nil
