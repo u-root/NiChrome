@@ -47,7 +47,6 @@ rootwait
 
 	kernelVersion = "4.12.7"
 	workingDir    = ""
-	linuxVersion  = "linux_stable"
 	homeDir       = ""
 	packageList   = []string{
 		"bc",
@@ -144,7 +143,7 @@ func aptget() error {
 }
 
 func cleanup() error {
-	filesToRemove := [...]string{linuxVersion, "linux-stable", "NiChrome", "vboot_reference", "linux-firmware"}
+	filesToRemove := [...]string{"linux-stable", "NiChrome", "vboot_reference", "linux-firmware"}
 	fmt.Printf("-------- Removing problematic files %v\n", filesToRemove)
 	for _, file := range filesToRemove {
 		if _, err := os.Stat(file); err != nil {
