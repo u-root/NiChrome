@@ -45,8 +45,9 @@ rootwait
 	rootDev  string
 	kernPart = 2
 
-	kernelVersion = "4.12.7"
+	kernelVersion = "v4.12.7"
 	workingDir    = ""
+	linuxVersion  = "linux-stable"
 	homeDir       = ""
 	packageList   = []string{
 		"bc",
@@ -238,7 +239,7 @@ func chrome() error {
 }
 
 func kernelGet() error {
-	var args = []string{"clone", "--depth", "1", "-b", "v4.12.7", "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"}
+	var args = []string{"clone", "--depth", "1", "-b", kernelVersion, "git://git.kernel.org/pub/scm/linux/kernel/git/stable/" + linuxVersion + ".git"}
 	fmt.Printf("-------- Getting the kernel via git %v\n", args)
 	cmd := exec.Command("git", args...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
