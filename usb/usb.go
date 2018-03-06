@@ -40,7 +40,6 @@ rootwait
 	skipkern = flag.Bool("skipkern", false, "Don't put the kern onto usb")
 	keys     = flag.String("keys", "vboot_reference/tests/devkeys", "where the keys live")
 	dev      = flag.String("dev", "/dev/null", "What device to use")
-	config   = flag.String("config", "CONFIG", "Linux config file")
 	kernDev  string
 	rootDev  string
 	kernPart = 2
@@ -266,8 +265,8 @@ func firmwareGet() error {
 	return nil
 }
 func buildKernel() error {
-	if err := cp(*config, "linux-stable/.config"); err != nil {
-		fmt.Printf("copying %v to linux-stable/.config: %v", *config, err)
+	if err := ioutil.WriteFile("linux-stable/.config", []byte(kernelConfig), 0644); err != nil {
+		return err
 	}
 
 	cmd := exec.Command("make", "--directory", "linux-stable", "-j" + strconv.Itoa(threads))
