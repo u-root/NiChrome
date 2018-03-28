@@ -22,7 +22,7 @@ import (
 // version of tcz packages. It's not possible
 // with their design to mix versions.
 const (
-	tczs = "/tcz/8.x/*/tcz/*.tcz"
+	tczs   = "/tcz/8.x/*/tcz/*.tcz"
 	passwd = "root:x:0:0:root:/:/bin/bash\nuser:x:1000:1000:user:/:/bin/bash\n"
 )
 
@@ -148,6 +148,8 @@ var (
 		util.Symlink{NewPath: "/etc/mtab", Target: "/proc/mounts"},
 		// Sigh.
 		util.Symlink{NewPath: "/bin/sh", Target: "/bin/bash"},
+		// Resolve localhost name
+		util.File{Name: "/etc/hosts", Contents: "127.0.0.1\tlocalhost", Mode: 0644},
 	}
 )
 
