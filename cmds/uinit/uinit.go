@@ -149,7 +149,7 @@ var (
 		// Sigh.
 		util.Symlink{NewPath: "/bin/sh", Target: "/bin/bash"},
 		// Resolve localhost name
-		util.File{Name: "/etc/hosts", Contents: "127.0.0.1\tlocalhost", Mode: 0644},
+		util.File{Name: "/etc/hosts", Contents: "127.0.0.1\tlocalhost\n::1\tlocalhost ip6-localhost ip6-loopback\n", Mode: 0644},
 	}
 )
 
