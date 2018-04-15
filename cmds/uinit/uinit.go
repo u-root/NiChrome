@@ -362,6 +362,15 @@ func main() {
 		log.Fatalf("xrun failed %v:", err)
 	}
 
+	// HACK.
+	// u-root is setting bogus modes on /. fix it.
+	// hack for new u-root cpio bug.
+	// We may just leave this here forever, since the failure is so hard
+	// to diagnose.
+	if err := os.Chmod("/", 0777); err != nil {
+		log.Print(err)
+	}
+
 	if err := dousernamespace(); err != nil {
 		log.Printf("dousernamespace: %v", err)
 	}
