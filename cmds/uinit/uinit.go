@@ -24,6 +24,7 @@ import (
 const (
 	tczs   = "/tcz/8.x/*/tcz/*.tcz"
 	passwd = "root:x:0:0:root:/:/bin/bash\nuser:x:1000:1000:user:/:/bin/bash\n"
+	hosts  = "127.0.0.1 localhost\n"
 )
 
 var (
@@ -123,9 +124,16 @@ func findRoot(devs ...string) (string, error) {
 }
 
 func x11(n string, args ...string) error {
+	out := os.Stdout
+	f, err := ioutil.TempFile("", n)
+	if err != nil {
+		log.Print(err)
+	} else {
+		out = f
+	}
 	cmd := exec.Command(n, args...)
 	cmd.Env = append(os.Environ(), "DISPLAY=:0")
-	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	cmd.Stdout, cmd.Stderr = out, out
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("X11 start %v %v: %v", n, args, err)
 	}
@@ -144,6 +152,10 @@ var (
 		util.Mount{Source: "tmpfs", Target: "/pkg", FSType: "tmpfs"},
 	}
 	rootFileSystem = []util.Creator{
+		util.Dir{Name: "/go/pkg/linux_amd64", Mode: 0777},
+		util.Dir{Name: "/dev/shm", Mode: 0777},
+		util.Dir{Name: "/pkg", Mode: 0777},
+		util.Dir{Name: "/ubin", Mode: 0777},
 		// fusermount requires this. When we write our own we can remove this.
 		util.Symlink{NewPath: "/etc/mtab", Target: "/proc/mounts"},
 		// Sigh.
@@ -218,7 +230,7 @@ func dologin() error {
 }
 
 func xrunuser() error {
-	for _, f := range []string{"wingo", "flwm", "AppChrome", "chrome"} {
+	for _, f := range []string{"wingo", "AppChrome", "chrome"} {
 		log.Printf("Run %v", f)
 		go x11(f)
 	}
@@ -337,6 +349,10 @@ func main() {
 	if o, err := cmd.CombinedOutput(); err != nil {
 		log.Printf("ip link failed(%v, %v); continuing", string(o), err)
 	}
+	cmd = exec.Command("ip", "link", "set", "dev", "lo", "up")
+	if o, err := cmd.CombinedOutput(); err != nil {
+		log.Printf("ip link up failed(%v, %v); continuing", string(o), err)
+	}
 
 	for _, c := range rootFileSystem {
 		if err = c.Create(); err != nil {
@@ -358,6 +374,12 @@ func main() {
 			log.Printf("Error creating /etc/passwd: %v", err)
 		}
 	}
+	// If they did not supply a hosts file, we need one for localhost.
+	if _, err := os.Stat("/etc/hosts"); err != nil {
+		if err := ioutil.WriteFile("/etc/hosts", []byte(hosts), os.FileMode(0644)); err != nil {
+			log.Printf("Error creating /etc/hosts: %v", err)
+		}
+	}
 	if err := xrun(); err != nil {
 		log.Fatalf("xrun failed %v:", err)
 	}
@@ -369,6 +391,13 @@ func main() {
 	// to diagnose.
 	if err := os.Chmod("/", 0777); err != nil {
 		log.Print(err)
+	}
+
+	for _, f := range []string{"sos", "wifi"} {
+		log.Printf("Run %v", f)
+		go x11(f)
+		// we have to give it a little time until we make it smarter
+		time.Sleep(2 * time.Second)
 	}
 
 	if err := dousernamespace(); err != nil {
