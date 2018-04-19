@@ -1,3 +1,6 @@
+package main
+
+const kernelConfig = `
 #
 # Automatically generated file; DO NOT EDIT.
 # Linux/x86_64 4.12.7 Kernel Configuration
@@ -4974,3 +4977,4 @@ CONFIG_ARCH_HAS_SG_CHAIN=y
 CONFIG_ARCH_HAS_PMEM_API=y
 CONFIG_ARCH_HAS_MMIO_FLUSH=y
 CONFIG_SBITMAP=y
+`
