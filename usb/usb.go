@@ -41,6 +41,7 @@ rootwait
 	keys     = flag.String("keys", "vboot_reference/tests/devkeys", "where the keys live")
 	dev      = flag.String("dev", "/dev/null", "What device to use")
 	config   = flag.String("config", "CONFIG", "Linux config file")
+	extra    = flag.String("extra", "", "Comma-separated list of extra packages to include")
 	kernDev  string
 	rootDev  string
 	kernPart = 2
@@ -128,12 +129,12 @@ func aptget() error {
 			missing = append(missing, packageName)
 		}
 	}
-	
+
 	if len(missing) == 0 {
 		fmt.Println("No missing dependencies to install")
 		return nil
 	}
-	
+
 	fmt.Printf("Using apt-get to get %v\n", missing)
 	get := []string{"apt-get", "-y", "install"}
 	get = append(get, missing...)
@@ -161,7 +162,7 @@ func cleanup() error {
 }
 
 func goGet() error {
-	cmd := exec.Command("go", "get", "github.com/u-root/u-root/", "github.com/u-root/wingo", "upspin.io/cmd/...", "github.com/nsf/godit")
+	cmd := exec.Command("go", append([]string{"get", "github.com/u-root/u-root"}, dynamicCmdList...)...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	return cmd.Run()
 }
@@ -270,7 +271,7 @@ func buildKernel() error {
 		fmt.Printf("copying %v to linux-stable/.config: %v", *config, err)
 	}
 
-	cmd := exec.Command("make", "--directory", "linux-stable", "-j" + strconv.Itoa(threads))
+	cmd := exec.Command("make", "--directory", "linux-stable", "-j"+strconv.Itoa(threads))
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	// TODO: this is OK for now. Later we'll need to do something
 	// with a map and GOARCH.
@@ -301,7 +302,7 @@ func buildVbutil() error {
 		fmt.Printf("couldn't checkout the right branch")
 		return err
 	}
-	cmd = exec.Command("make", "-j" + strconv.Itoa(threads))
+	cmd = exec.Command("make", "-j"+strconv.Itoa(threads))
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	cmd.Dir = "vboot_reference"
 	if err := cmd.Run(); err != nil {
@@ -479,6 +480,9 @@ func allFunc() error {
 
 func main() {
 	flag.Parse()
+	if *extra != "" {
+		dynamicCmdList = append(dynamicCmdList, strings.Split(*extra, ",")...)
+	}
 	log.Printf("Using kernel %v\n", kernelVersion)
 	if err := allFunc(); err != nil {
 		log.Fatalf("fail error is : %v", err)
