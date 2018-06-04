@@ -103,7 +103,7 @@ func findRoot(devs ...string) (string, error) {
 			log.Print(err)
 			continue
 		}
-		for i, p := range g.Parts {
+		for i, p := range g.Primary.Parts {
 			var zero uuid.UUID
 			if p.UniqueGUID == zero {
 				continue
