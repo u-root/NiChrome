@@ -66,9 +66,9 @@ func findKernDev(devs ...string) (string, uuid.UUID, error) {
 			continue
 		}
 		// install media is always KERN-A, second partition.
-		if g.Parts[1].UniqueGUID.String() == rg {
+		if g.Primary.Parts[1].UniqueGUID.String() == rg {
 			log.Printf("%v: GUID %s matches for partition 2\n", d, rg)
-			return fmt.Sprintf("%s", d), g.Parts[1].UniqueGUID, nil
+			return fmt.Sprintf("%s", d), g.Primary.Parts[1].UniqueGUID, nil
 		}
 	}
 	return "", uuid.UUID{}, fmt.Errorf("A device with that GUID was not found")
@@ -148,7 +148,7 @@ func main() {
 	if _, err := io.Copy(destRoot, root); err != nil {
 		log.Fatal(err)
 	}
-	g.Parts[3].UniqueGUID = u
+	g.Primary.Parts[3].UniqueGUID = u
 	if err := gpt.Write(destDev, g); err != nil {
 		log.Fatal(err)
 	}
