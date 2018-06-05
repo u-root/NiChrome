@@ -335,7 +335,7 @@ func vbutilIt() error {
 		} else if pt.Primary == nil || pt.MasterBootRecord == nil {
 			// With new changes to u-root/gpt we need to check to see if the contents
 			// of the struct are nil
-			log.Printf("Dev set to nil")
+			log.Printf("Unable to parse GPT header of %v", *dev)
 		} else {
 			pg = uuid.UUID(pt.Primary.Parts[kernPart-1].UniqueGUID)
 			// We may not be able to read a GPT, consider the case that dev is /dev/null.
