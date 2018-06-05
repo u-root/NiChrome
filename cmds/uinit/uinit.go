@@ -37,17 +37,17 @@ var (
 )
 
 func tczSetup() error {
-	pt, err := filepath.Glob(tczs)
+	g, err := filepath.Glob(tczs)
 	if err != nil {
 		log.Printf("Glob of %v: %v", tczs, err)
 	}
-	debug("Tcz file list: %v", pt)
+	debug("Tcz file list: %v", g)
 	// Now get the basenames, and then install them.
 	// TODO: fix up tcz to take a path name?
 	// The glob ensured they all end in .tcz.
 	// We can just take all but the last 4 chars of the name.
 	var tczlist []string
-	for _, p := range pt {
+	for _, p := range g {
 		b := filepath.Base(p)
 		tczlist = append(tczlist, b[:len(b)-4])
 	}
