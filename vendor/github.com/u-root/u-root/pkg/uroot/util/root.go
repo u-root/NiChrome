@@ -13,7 +13,10 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"strconv"
 	"syscall"
+
+	"github.com/u-root/u-root/pkg/cmdline"
 )
 
 const (
@@ -133,8 +136,8 @@ var (
 		Dir{Name: "/etc", Mode: 0777},
 
 		Dir{Name: "/proc", Mode: 0555},
-		Mount{Target: "/proc", FSType: "proc"},
-		Mount{Target: "/tmp", FSType: "tmpfs"},
+		Mount{Source: "proc", Target: "/proc", FSType: "proc"},
+		Mount{Source: "tmpfs", Target: "/tmp", FSType: "tmpfs"},
 
 		Dir{Name: "/dev", Mode: 0777},
 		Dev{Name: "/dev/tty", Mode: syscall.S_IFCHR | 0666, Dev: 0x0500},
@@ -144,10 +147,10 @@ var (
 		// Kernel must be compiled with CONFIG_DEVTMPFS.
 		// Note that things kind of work even if this mount fails.
 		// TODO: move the Dir commands above below this line?
-		Mount{Target: "/dev", FSType: "devtmpfs"},
+		Mount{Source: "devtmpfs", Target: "/dev", FSType: "devtmpfs"},
 
 		Dir{Name: "/dev/pts", Mode: 0777},
-		Mount{Target: "/dev/pts", FSType: "devpts", Opts: "newinstance,ptmxmode=666,gid=5,mode=620"},
+		Mount{Source: "devpts", Target: "/dev/pts", FSType: "devpts", Opts: "newinstance,ptmxmode=666,gid=5,mode=620"},
 		Symlink{NewPath: "/dev/ptmx", Target: "/dev/pts/ptmx"},
 
 		// Note: shm is required at least for Chrome. If you don't mount
@@ -157,18 +160,34 @@ var (
 		Mount{Source: "tmpfs", Target: "/dev/shm", FSType: "tmpfs"},
 
 		Dir{Name: "/sys", Mode: 0555},
-		Mount{Source: "sys", Target: "/sys", FSType: "sysfs"},
+		Mount{Source: "sysfs", Target: "/sys", FSType: "sysfs"},
+	}
+	cgroupsnamespace = []Creator{
 		Mount{Source: "cgroup", Target: "/sys/fs/cgroup", FSType: "tmpfs"},
 		Dir{Name: "/sys/fs/cgroup/memory", Mode: 0555},
 		Dir{Name: "/sys/fs/cgroup/freezer", Mode: 0555},
 		Dir{Name: "/sys/fs/cgroup/devices", Mode: 0555},
 		Dir{Name: "/sys/fs/cgroup/cpu,cpuacct", Mode: 0555},
+		Dir{Name: "/sys/fs/cgroup/blkio", Mode: 0555},
+		Dir{Name: "/sys/fs/cgroup/cpuset", Mode: 0555},
+		Dir{Name: "/sys/fs/cgroup/pids", Mode: 0555},
+		Dir{Name: "/sys/fs/cgroup/net_cls,net_prio", Mode: 0555},
+		Dir{Name: "/sys/fs/cgroup/hugetlb", Mode: 0555},
+		Dir{Name: "/sys/fs/cgroup/perf_event", Mode: 0555},
 		Symlink{NewPath: "/sys/fs/cgroup/cpu", Target: "/sys/fs/cgroup/cpu,cpuacct"},
 		Symlink{NewPath: "/sys/fs/cgroup/cpuacct", Target: "/sys/fs/cgroup/cpu,cpuacct"},
+		Symlink{NewPath: "/sys/fs/cgroup/net_cls", Target: "/sys/fs/cgroup/net_cls,net_prio"},
+		Symlink{NewPath: "/sys/fs/cgroup/net_prio", Target: "/sys/fs/cgroup/net_cls,net_prio"},
 		Mount{Source: "cgroup", Target: "/sys/fs/cgroup/memory", FSType: "cgroup", Opts: "memory"},
 		Mount{Source: "cgroup", Target: "/sys/fs/cgroup/freezer", FSType: "cgroup", Opts: "freezer"},
 		Mount{Source: "cgroup", Target: "/sys/fs/cgroup/devices", FSType: "cgroup", Opts: "devices"},
 		Mount{Source: "cgroup", Target: "/sys/fs/cgroup/cpu,cpuacct", FSType: "cgroup", Opts: "cpu,cpuacct"},
+		Mount{Source: "cgroup", Target: "/sys/fs/cgroup/blkio", FSType: "cgroup", Opts: "blkio"},
+		Mount{Source: "cgroup", Target: "/sys/fs/cgroup/cpuset", FSType: "cgroup", Opts: "cpuset"},
+		Mount{Source: "cgroup", Target: "/sys/fs/cgroup/pids", FSType: "cgroup", Opts: "pids"},
+		Mount{Source: "cgroup", Target: "/sys/fs/cgroup/net_cls,net_prio", FSType: "cgroup", Opts: "net_cls,net_prio"},
+		Mount{Source: "cgroup", Target: "/sys/fs/cgroup/hugetlb", FSType: "cgroup", Opts: "hugetlb"},
+		Mount{Source: "cgroup", Target: "/sys/fs/cgroup/perf_event", FSType: "cgroup", Opts: "perf_event"},
 	}
 
 	Env = map[string]string{
@@ -184,13 +203,7 @@ func GoBin() string {
 	return fmt.Sprintf("/go/bin/%s_%s:/go/bin:/go/pkg/tool/%s_%s", runtime.GOOS, runtime.GOARCH, runtime.GOOS, runtime.GOARCH)
 }
 
-// build the root file system.
-func Rootfs() {
-	Env["PATH"] = fmt.Sprintf("%v:%v:%v:%v", GoBin(), PATHHEAD, PATHMID, PATHTAIL)
-	for k, v := range Env {
-		os.Setenv(k, v)
-	}
-
+func create(namespace []Creator) {
 	for _, c := range namespace {
 		if err := c.Create(); err != nil {
 			log.Printf("Error creating %s: %v", c, err)
@@ -198,4 +211,23 @@ func Rootfs() {
 			log.Printf("Created %v", c)
 		}
 	}
+}
+
+// build the root file system.
+func Rootfs() {
+	Env["PATH"] = fmt.Sprintf("%v:%v:%v:%v", GoBin(), PATHHEAD, PATHMID, PATHTAIL)
+	for k, v := range Env {
+		os.Setenv(k, v)
+	}
+	create(namespace)
+
+	// systemd gets upset when it discovers something has already setup cgroups
+	// We have to do this after the base namespace is created, so we have /proc
+	initFlags := cmdline.GetInitFlagMap()
+	systemd, present := initFlags["systemd"]
+	systemdEnabled, boolErr := strconv.ParseBool(systemd)
+	if !present || boolErr != nil || systemdEnabled == false {
+		create(cgroupsnamespace)
+	}
+
 }
