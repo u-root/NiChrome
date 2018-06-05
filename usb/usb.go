@@ -332,6 +332,10 @@ func vbutilIt() error {
 		var pt = &gpt.PartitionTable{}
 		if err := json.NewDecoder(bytes.NewBuffer(msg)).Decode(&pt); err != nil {
 			log.Printf("Reading in GPT JSON, warning only: %v", err)
+		} else if pt.Primary == nil || pt.MasterBootRecord == nil {
+			// With new changes to u-root/gpt we need to check to see if the contents
+			// of the struct are nil
+			log.Printf("Dev set to nil")
 		} else {
 			pg = uuid.UUID(pt.Primary.Parts[kernPart-1].UniqueGUID)
 			// We may not be able to read a GPT, consider the case that dev is /dev/null.
