@@ -59,16 +59,16 @@ func findKernDev(devs ...string) (string, uuid.UUID, error) {
 			log.Print(err)
 			continue
 		}
-		g, _, err := gpt.New(f)
+		pt, err := gpt.New(f)
 		f.Close()
 		if err != nil {
 			log.Print(err)
 			continue
 		}
 		// install media is always KERN-A, second partition.
-		if g.Parts[1].UniqueGUID.String() == rg {
+		if pt.Primary.Parts[1].UniqueGUID.String() == rg {
 			log.Printf("%v: GUID %s matches for partition 2\n", d, rg)
-			return fmt.Sprintf("%s", d), g.Parts[1].UniqueGUID, nil
+			return fmt.Sprintf("%s", d), pt.Primary.Parts[1].UniqueGUID, nil
 		}
 	}
 	return "", uuid.UUID{}, fmt.Errorf("A device with that GUID was not found")
@@ -107,7 +107,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	g, _, err := gpt.New(destDev)
+	pt, err := gpt.New(destDev)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func main() {
 	}
 	// Point of no return. Fix the GUID on the device.
 	// Write the old GPT back first to see if writes even work.
-	if err := gpt.Write(destDev, g); err != nil {
+	if err := gpt.Write(destDev, pt); err != nil {
 		log.Fatal(err)
 	}
 	if _, err := io.Copy(destKern, kern); err != nil {
@@ -148,8 +148,8 @@ func main() {
 	if _, err := io.Copy(destRoot, root); err != nil {
 		log.Fatal(err)
 	}
-	g.Parts[3].UniqueGUID = u
-	if err := gpt.Write(destDev, g); err != nil {
+	pt.Primary.Parts[3].UniqueGUID = u
+	if err := gpt.Write(destDev, pt); err != nil {
 		log.Fatal(err)
 	}
 	log.Printf("All done. restart in chromeos and cgpt add -i 4 -P 2 -S 0 -T 1 %v", dest)

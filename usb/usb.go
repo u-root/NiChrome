@@ -329,11 +329,12 @@ func vbutilIt() error {
 	}
 	var pg uuid.UUID
 	if err == nil {
-		var g = make([]gpt.GPT, 2)
+		var g = &gpt.PartitionTable{}
 		if err := json.NewDecoder(bytes.NewBuffer(msg)).Decode(&g); err != nil {
 			log.Printf("Reading in GPT JSON, warning only: %v", err)
 		} else {
-			pg = uuid.UUID(g[0].Parts[kernPart-1].UniqueGUID)
+			fmt.Printf(string(msg))
+			pg = uuid.UUID(g.Primary.Parts[kernPart-1].UniqueGUID)
 			// We may not be able to read a GPT, consider the case that dev is /dev/null.
 			// But it is an error for it to be zero if we succeeded in reading it.
 			var zeropg uuid.UUID
