@@ -28,6 +28,7 @@ const (
 )
 
 var (
+	startupCmds   = []string{"sos", "wifi", "upspin"}
 	cmdline       = make(map[string]string)
 	debug         = func(string, ...interface{}) {}
 	usernamespace = flag.Bool("usernamespace", false, "Set up user namespaces and spawn login")
@@ -393,7 +394,7 @@ func main() {
 		log.Print(err)
 	}
 
-	for _, f := range []string{"sos", "wifi"} {
+	for _, f := range startupCmds {
 		log.Printf("Run %v", f)
 		go x11(f)
 		// we have to give it a little time until we make it smarter
