@@ -190,7 +190,7 @@ func goBuildDynamic() error {
 		}
 		args = append(args, "-files", filepath.Join(workingDir, v)+":"+v)
 	}
-	args = append(args, "-files", "pkg/sos/html")
+	args = append(args, "-files", "pkg/sos/html:etc/sos/html")
 	bbpath := filepath.Join(os.Getenv("GOPATH"), "src/github.com/u-root/u-root")
 	cmdpath := filepath.Join(os.Getenv("GOPATH"), "src/github.com/u-root/u-root/cmds/*")
 	args = append(args, cmdpath)
