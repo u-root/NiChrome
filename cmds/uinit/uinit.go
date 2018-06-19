@@ -28,7 +28,7 @@ const (
 )
 
 var (
-	startupCmds   = []string{"sos", "wifi", "upspin"}
+	startupCmds   = []string{"sos", "wifi", "upspin_sos"}
 	cmdline       = make(map[string]string)
 	debug         = func(string, ...interface{}) {}
 	usernamespace = flag.Bool("usernamespace", false, "Set up user namespaces and spawn login")
