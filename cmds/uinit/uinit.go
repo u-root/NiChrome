@@ -28,6 +28,7 @@ const (
 )
 
 var (
+	userenv       = "user"
 	startupcmds   = []string{"sos", "wifi", "upspin_sos"}
 	cmdline       = make(map[string]string)
 	debug         = func(string, ...interface{}) {}
@@ -202,6 +203,7 @@ func dousernamespace() error {
 	// and build a namespace.
 	cmd := exec.Command("/bbin/uinit", "-login")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Unshareflags: syscall.CLONE_NEWNS}
+	cmd.Env = append(os.Environ(), fmt.Sprintf("USER=%v", userenv))
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("donamespace: %v", err)
