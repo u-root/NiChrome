@@ -357,6 +357,8 @@ func vbutilIt() error {
 	}
 	bzImage := "linux-stable/arch/x86/boot/bzImage"
 	fmt.Printf("Bz image is located at %s \n", bzImage)
+	// Note that it is possible that all we need to do here to create a recovery
+	// stick is use recovery_kernel.keyblock
 	keyblock := filepath.Join(*keys, "kernel.keyblock")
 	sign := filepath.Join(*keys, "kernel_data_key.vbprivk")
 	cmd := exec.Command("./vboot_reference/build/futility/futility", "vbutil_kernel", "--pack", newKern, "--keyblock", keyblock, "--signprivate", sign, "--version", "1", "--vmlinuz", bzImage, "--bootloader", "nocontent.efi", "--config", "config.txt", "--arch", "x86")
