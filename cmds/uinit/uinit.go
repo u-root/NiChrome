@@ -22,15 +22,15 @@ import (
 // version of tcz packages. It's not possible
 // with their design to mix versions.
 const (
-	tczs    = "/tcz/8.x/*/tcz/*.tcz"
+	tczs   	= "/tcz/8.x/*/tcz/*.tcz"
 	homeEnv = "/home/user"
-	userEnv = "user"
-	passwd  = "root:x:0:0:root:/:/bin/bash\nuser:x:1000:1000:" + userEnv + ":" + homeEnv + ":/bin/bash\n"
-	hosts   = "127.0.0.1 localhost\n"
+	userEnv	= "user"
+	passwd 	= "root:x:0:0:root:/:/bin/bash\nuser:x:1000:1000:" + userEnv + ":" + homeEnv + ":/bin/bash\n"
+	hosts  	= "127.0.0.1 localhost\n"
 )
 
 var (
-	startupCmds   = []string{"sos", "wifi", "strace -o k.txt upspin_sos"}
+	startupCmds   = []string{"sos", "wifi"}
 	cmdline       = make(map[string]string)
 	debug         = func(string, ...interface{}) {}
 	usernamespace = flag.Bool("usernamespace", false, "Set up user namespaces and spawn login")
