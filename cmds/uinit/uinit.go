@@ -22,14 +22,15 @@ import (
 // version of tcz packages. It's not possible
 // with their design to mix versions.
 const (
-	tczs   = "/tcz/8.x/*/tcz/*.tcz"
-	passwd = "root:x:0:0:root:/:/bin/bash\nuser:x:1000:1000:user:/:/bin/bash\n"
-	hosts  = "127.0.0.1 localhost\n"
+	tczs    = "/tcz/8.x/*/tcz/*.tcz"
+	homeEnv = "/home/user"
+	userEnv = "user"
+	passwd  = "root:x:0:0:root:/:/bin/bash\nuser:x:1000:1000:" + userEnv + ":" + homeEnv + ":/bin/bash\n"
+	hosts   = "127.0.0.1 localhost\n"
 )
 
 var (
-	userEnv       = "user"
-	startupCmds   = []string{"sos", "wifi", "upspin_sos"}
+	startupCmds   = []string{"sos", "wifi", "strace -o k.txt upspin_sos"}
 	cmdline       = make(map[string]string)
 	debug         = func(string, ...interface{}) {}
 	usernamespace = flag.Bool("usernamespace", false, "Set up user namespaces and spawn login")
@@ -203,7 +204,7 @@ func dousernamespace() error {
 	// and build a namespace.
 	cmd := exec.Command("/bbin/uinit", "-login")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Unshareflags: syscall.CLONE_NEWNS}
-	cmd.Env = append(os.Environ(), fmt.Sprintf("USER=%v", userEnv))
+	cmd.Env = append(os.Environ(), fmt.Sprintf("USER=%v", userEnv), fmt.Sprintf("HOME=%v", homeEnv))
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("donamespace: %v", err)
@@ -233,7 +234,7 @@ func dologin() error {
 }
 
 func xrunuser() error {
-	for _, f := range []string{"wingo", "AppChrome", "chrome"} {
+	for _, f := range []string{"wingo", "AppChrome", "chrome", "upspin_sos"} {
 		log.Printf("Run %v", f)
 		go x11(f)
 	}
