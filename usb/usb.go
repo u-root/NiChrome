@@ -39,6 +39,7 @@ rootwait
 	skiproot = flag.Bool("skiproot", false, "Don't put the root onto usb")
 	skipkern = flag.Bool("skipkern", false, "Don't put the kern onto usb")
 	keys     = flag.String("keys", "vboot_reference/tests/devkeys", "where the keys live")
+	keyFilePrefix = flag.String("keyfileprefix", "", "set this to recover_ or installer_ if needed")
 	dev      = flag.String("dev", "/dev/null", "What device to use")
 	config   = flag.String("config", "CONFIG", "Linux config file")
 	extra    = flag.String("extra", "", "Comma-separated list of extra packages to include")
@@ -359,8 +360,8 @@ func vbutilIt() error {
 	fmt.Printf("Bz image is located at %s \n", bzImage)
 	// Note that it is possible that all we need to do here to create a recovery
 	// stick is use recovery_kernel.keyblock
-	keyblock := filepath.Join(*keys, "kernel.keyblock")
-	sign := filepath.Join(*keys, "kernel_data_key.vbprivk")
+	keyblock := filepath.Join(*keys, *keyFilePrefix + "kernel.keyblock")
+	sign := filepath.Join(*keys, *keyFilePrefix + "kernel_data_key.vbprivk")
 	cmd := exec.Command("./vboot_reference/build/futility/futility", "vbutil_kernel", "--pack", newKern, "--keyblock", keyblock, "--signprivate", sign, "--version", "1", "--vmlinuz", bzImage, "--bootloader", "nocontent.efi", "--config", "config.txt", "--arch", "x86")
 	stdoutStderr, err := cmd.CombinedOutput()
 	fmt.Printf("%s\n", stdoutStderr)
