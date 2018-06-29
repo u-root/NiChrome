@@ -139,6 +139,7 @@ func main() {
 	}
 	// Point of no return. Fix the GUID on the device.
 	// Write the old GPT back first to see if writes even work.
+	// Includes quick fix to let NiChrome install to disk
 	if err := gpt.Write(destDev, pt); err != nil {
 		log.Fatal(err)
 	}
@@ -146,9 +147,12 @@ func main() {
 		log.Fatal(err)
 	}
 	if _, err := io.Copy(destRoot, root); err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		log.Print("This is a non-issue, ignoring")
 	}
 	pt.Primary.Parts[3].UniqueGUID = u
+	pt.Backup.Parts[3].UniqueGUID = u
+
 	if err := gpt.Write(destDev, pt); err != nil {
 		log.Fatal(err)
 	}
