@@ -97,7 +97,9 @@
   name = "github.com/u-root/u-root"
   packages = [
     "pkg/cmdline",
+    "pkg/cpio",
     "pkg/gpt",
+    "pkg/uio",
     "pkg/uroot/util"
   ]
   revision = "ce748b8c28d4358dd8839ca9092f2f5af3f42051"
@@ -123,6 +125,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0324e732160958e750128a2c6a26be4da9f366d0e6b359ed5b502d226b79d13a"
+  inputs-digest = "2512bda9df7f0b96f0068d7e9e0fd6523865509f9aed9017dd996a3944a9da1f"
   solver-name = "gps-cdcl"
   solver-version = 1
