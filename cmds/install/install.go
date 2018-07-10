@@ -141,10 +141,12 @@ func main() {
 	// Write the old GPT back first to see if writes even work.
 	// Includes quick fix to let NiChrome install to disk
 	if err := gpt.Write(destDev, pt); err != nil {
-		log.Fatal(err)
+		log.Printf("possible fatal err: ", err)
+		log.Printf("ignoring")
 	}
 	if _, err := io.Copy(destKern, kern); err != nil {
-		log.Fatal(err)
+		log.Printf("possible fatal err: ", err)
+		log.Printf("ignoring")
 	}
 	if _, err := io.Copy(destRoot, root); err != nil {
 		log.Print(err)
