@@ -13,7 +13,7 @@
 
 ### Part 2: Build the NiChrome stick
   1. On your Chromebook, install the Chrome OS Recovery tool and use it to format your USB stick
-  2. On your build machine, run `go get https://github.com/u-root/u-root.git https://github.com/u-root/NiChrome.git`
+  2. On your build machine, run `go get github.com/u-root/u-root github.com/u-root/NiChrome`
   3. Navigate to NiChrome/usb and run `go build .`
   4. Insert your formatted USB stick and determine its dev directory (/dev/sdx)
   5. Navigate to NiChrome and run `./usb/usb -fetch=true -dev=/dev/sdx`
