@@ -148,6 +148,7 @@ func main() {
 		log.Fatal(err)
 	}
 	pt.Primary.Parts[3].UniqueGUID = u
+	pt.Backup.Parts[3].UniqueGUID = u
 	if err := gpt.Write(destDev, pt); err != nil {
 		log.Fatal(err)
 	}
