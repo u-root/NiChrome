@@ -27,10 +27,11 @@
   1. On your Chromebook, insert your NiChrome USB stick and determine its dev directory
   2. Open VT2 and sign NiChrome by running `/usr/share/vboot/bin/make_dev_ssd.sh -i /dev/sdx --recovery_key`
 
-### Part 4: Install and sign NiChrome, revert to Verified mode
+### Part 4: Install and sign NiChrome, return to Verified mode
   1. Boot into NiChrome and run `install /dev/mmcblkx` (x will be either 0 or 1, depending on your system. Tab-complete to be safe)
-  2. Run `/vboot_reference/build/cgpt/cgpt add -i 4 -P 2 -T 1 -S 0 /dev/mmcblkx`
-  3. Return to Verified mode by pressing spacebar on powerup
+  2. Sign NiChrome on disk by switching to VT2 and running `/usr/share/vboot/bin/make_dev_ssd.sh --partitions 4`
+  3. Run `/vboot_reference/build/cgpt/cgpt add -i 4 -P 2 -T 1 -S 0 /dev/mmcblkx`
+  4. Return to Verified mode by pressing spacebar on powerup
 
 *You should be dropped into NiChrome*
 
