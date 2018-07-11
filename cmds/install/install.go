@@ -15,7 +15,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/u-root/u-root/pkg/gpt"
 )
 
@@ -39,10 +38,10 @@ func parseCmdline() {
 }
 
 // Find the boot media containing the root GUID.
-func findKernDev(devs ...string) (string, uuid.UUID, error) {
+func findKernDev(devs ...string) (string, gpt.GUID, error) {
 	rg, ok := cmdline["guid_root"]
 	if !ok {
-		return "", uuid.UUID{}, fmt.Errorf("No guid_root cmdline parameter")
+		return "", gpt.GUID{}, fmt.Errorf("No guid_root cmdline parameter")
 	}
 	for _, d := range devs {
 		fi, err := os.Stat(d)
@@ -71,7 +70,7 @@ func findKernDev(devs ...string) (string, uuid.UUID, error) {
 			return fmt.Sprintf("%s", d), pt.Primary.Parts[1].UniqueGUID, nil
 		}
 	}
-	return "", uuid.UUID{}, fmt.Errorf("A device with that GUID was not found")
+	return "", gpt.GUID{}, fmt.Errorf("A device with that GUID was not found")
 }
 
 func main() {

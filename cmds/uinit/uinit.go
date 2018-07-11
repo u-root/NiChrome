@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/u-root/u-root/pkg/gpt"
 	"github.com/u-root/u-root/pkg/uroot/util"
 )
@@ -107,7 +106,7 @@ func findRoot(devs ...string) (string, error) {
 			continue
 		}
 		for i, p := range pt.Primary.Parts {
-			var zero uuid.UUID
+			var zero gpt.GUID
 			if p.UniqueGUID == zero {
 				continue
 			}
