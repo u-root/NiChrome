@@ -23,7 +23,6 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/google/uuid"
 	"github.com/u-root/u-root/pkg/gpt"
 )
 
@@ -328,7 +327,7 @@ func vbutilIt() error {
 	if err != nil {
 		log.Printf("gpt %v failed (warning only): %v", args, err)
 	}
-	var pg uuid.UUID
+	var pg gpt.GUID
 	if err == nil {
 		var pt = &gpt.PartitionTable{}
 		if err := json.NewDecoder(bytes.NewBuffer(msg)).Decode(&pt); err != nil {
@@ -338,17 +337,17 @@ func vbutilIt() error {
 			// of the struct are nil
 			log.Printf("Unable to parse GPT header of %v", *dev)
 		} else {
-			pg = uuid.UUID(pt.Primary.Parts[kernPart-1].UniqueGUID)
+			pg = gpt.GUID(pt.Primary.Parts[kernPart-1].UniqueGUID)
 			// We may not be able to read a GPT, consider the case that dev is /dev/null.
 			// But it is an error for it to be zero if we succeeded in reading it.
-			var zeropg uuid.UUID
+			var zeropg gpt.GUID
 			if pg == zeropg {
 				log.Fatalf("Partition GUID for part %d is zero", kernPart-1)
 			}
 		}
 	}
 	newKern := "newKern"
-	configTxt := fmt.Sprintf("%sguid_root=%s\n", configTxt, pg)
+	configTxt := fmt.Sprintf("%sguid_root=%s\n", configTxt, pg.String())
 	if err := ioutil.WriteFile("config.txt", []byte(configTxt), 0644); err != nil {
 		return err
 	}

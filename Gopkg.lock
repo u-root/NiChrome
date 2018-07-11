@@ -60,13 +60,7 @@
   branch = "master"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
-  revision = "3a3da3a4e26776cc22a79ef46d5d58477532dede"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/google/uuid"
-  packages = ["."]
-  revision = "dec09d789f3dba190787f8b4454c7d3c936fed9e"
+  revision = "0cb4f732569330e7b40d8fcee91c41aafaaddc4f"
 
 [[projects]]
   name = "github.com/jmank88/nuts"
@@ -78,13 +72,13 @@
   branch = "master"
   name = "github.com/nightlyone/lockfile"
   packages = ["."]
-  revision = "6a197d5ea61168f2ac821de2b7f011b250904900"
+  revision = "0ad87eef1443f64d3d8c50da647e2b1552851124"
 
 [[projects]]
   branch = "master"
   name = "github.com/pelletier/go-toml"
   packages = ["."]
-  revision = "66540cf1fcd2c3aee6f6787dfa32a6ae9a870f12"
+  revision = "603baefff989777996bf283da430d693e78eba3a"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -106,13 +100,13 @@
     "pkg/gpt",
     "pkg/uroot/util"
   ]
-  revision = "f0fc83a6e21b5f45a143fee9415583cfb6478beb"
+  revision = "ce748b8c28d4358dd8839ca9092f2f5af3f42051"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "1e491301e022f8f977054da4c2d852decd59571f"
+  revision = "039a4258aec0ad3c79b905677cceeab13b296a77"
 
 [[projects]]
   branch = "master"
@@ -124,11 +118,11 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "c11f84a56e43e20a78cee75a7c034031ecf57d1f"
+  revision = "1b2967e3c290b7c545b3db0deeda16e9be4f98a2"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "df13ee942e798e974f37e5cf9fd45d169ff8a4c1e80430b93612cc3e44d28226"
+  inputs-digest = "0324e732160958e750128a2c6a26be4da9f366d0e6b359ed5b502d226b79d13a"
   solver-name = "gps-cdcl"
   solver-version = 1

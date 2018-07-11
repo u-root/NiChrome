@@ -4,10 +4,6 @@ required = [
 
 [[constraint]]
   branch = "master"
-  name = "github.com/google/uuid"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/u-root/u-root"
 
 [prune]
