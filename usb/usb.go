@@ -183,7 +183,7 @@ func goBuildStatic() error {
 
 func goBuildDynamic() error {
 	args := []string{"run", "u-root.go", "-o", filepath.Join(workingDir, initramfs)}
-	for _, v := range []string{"usr", "lib", "tcz", "etc", "upspin", "vboot_reference", ".ssh"} {
+	for _, v := range []string{"usr", "lib", "tcz", "etc", "upspin", ".ssh"} {
 		if _, err := os.Stat(v); err != nil {
 			continue
 		}
@@ -302,7 +302,7 @@ func buildVbutil() error {
 		fmt.Printf("couldn't checkout the right branch")
 		return err
 	}
-	cmd = exec.Command("make", "STATIC=1", "-j"+strconv.Itoa(threads))
+	cmd = exec.Command("make", "-j"+strconv.Itoa(threads))
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	cmd.Dir = "vboot_reference"
 	if err := cmd.Run(); err != nil {
