@@ -97,6 +97,20 @@ func tildeExpand(input string) string {
 	return input
 }
 
+func checkDevice(n string) error {
+	if filepath.Dir(n) != "/dev" {
+		return nil
+	}
+	fi, err := os.Stat(n)
+	if err != nil {
+		return err
+	}
+	if fi.Mode()&os.ModeDevice != os.ModeDevice {
+		return fmt.Errorf("%q is in /dev and is not a device?", n)
+	}
+	return nil
+}
+
 func setup() error {
 	dir, err := os.Getwd()
 	syscall.Umask(0)
@@ -117,6 +131,12 @@ func setup() error {
 		return nil
 	}
 	kernDev, rootDev = *dev+"2", *dev+"3"
+	if err := checkDevice(kernDev); err != nil {
+		return err
+	}
+	if err := checkDevice(rootDev); err != nil {
+		return err
+	}
 	return nil
 }
 
