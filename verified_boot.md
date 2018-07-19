@@ -1,5 +1,7 @@
 # Booting in Verified Mode
 
+*This process is known to work on all devices listed below. Feel free to try it out on others, and add it to the list if it works!*
+
 ### Part 1: Enter Developer mode
 *Warning: this deletes all local data. Back up any important files before continuing*
   1. On your Chromebook, press Esc-Reload-Power to enter Recovery mode.
@@ -43,3 +45,11 @@
   * If you forget to reset tries and are stuck in Verified mode, you can boot your NiChrome USB stick by inserting it and pressing Esc-Reload-Power. From here, you can run the same command as above: `/vboot_reference/build/cgpt/cgpt add -i 4 -T 1 /dev/mmcblkX`
 
   * If you create your own signing keys, add `-k /path/to/keys` to all `make_dev_*` commands in Part 3. Also, insert the NiChrome USB and run `/usr/share/vboot/bin/make_dev_ssd.sh -i /dev/sdX -k /path/to/keys --recovery_key` to sign your USB as a recovery stick. This way, you can boot from your USB in Verified mode.
+
+### Known Working Boards
+
+*Find your board name in Recovery mode at the bottom of your screen, without a USB stick inserted.*
+
+  * Basking
+  * Lava
+  * Sentry
