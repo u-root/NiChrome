@@ -145,9 +145,7 @@ func main() {
 	if _, err := io.Copy(destKern, kern); err != nil {
 		log.Fatal(err)
 	}
-	// TODO: create a pass function in cpio package
-	// that takes an io.Write, an io.Reader, and
-	// does this. But let's get it right first.
+	
 	archiver, err := cpio.Format("newc")
 	if err != nil {
 		log.Fatalf("newc not supported: %v", err)
@@ -155,20 +153,8 @@ func main() {
 
 	r := archiver.Reader(root)
 	w := archiver.Writer(destRoot)
-	for {
-		rec, err := r.ReadRecord()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			log.Fatalf("error reading records: %v", err)
-		}
-		if err := w.WriteRecord(rec); err != nil {
-			log.Fatalf("Writing record %q failed: %v", rec, err)
-		}
-	}
-	if err := cpio.WriteTrailer(w); err != nil {
-		log.Fatalf("Writing Trailer failed: %v", err)
+	if err := cpio.Passthrough(r, w); err != nil {
+		log.Fatal(err)
 	}
 	pt.Primary.Parts[3].UniqueGUID = u
 	pt.Backup.Parts[3].UniqueGUID = u
