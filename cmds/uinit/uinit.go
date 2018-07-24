@@ -4,6 +4,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/u-root/u-root/pkg/cpio"
 	"github.com/u-root/u-root/pkg/gpt"
 	"github.com/u-root/u-root/pkg/uroot/util"
 )
@@ -232,8 +234,34 @@ func dologin() error {
 	return nil
 }
 
+func homedir() error {
+	f, err := os.Open("/usr/user.cpio")
+	if err != nil {
+		return err
+	}
+	archiver, err := cpio.Format("newc")
+	if err != nil {
+		return err
+	}
+	rr := archiver.Reader(f)
+	for {
+		rec, err := rr.ReadRecord()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("error reading records: %v", err)
+		}
+		debug("Creating %s\n", rec)
+		if err := cpio.CreateFile(rec); err != nil {
+			log.Printf("Creating %q failed: %v", rec.Name, err)
+		}
+	}
+	return nil
+}
+
 func xrunuser() error {
-	for _, f := range []string{"wingo", "AppChrome", "chrome", "upspin_sos"} {
+	for _, f := range []string{"wingo", "AppChrome", "upspin_sos", "chrome"} {
 		log.Printf("Run %v", f)
 		go x11(f)
 	}
@@ -274,6 +302,9 @@ func main() {
 
 	if *user {
 		log.Print("Starting up user mode processes")
+		if err := homedir(); err != nil {
+			log.Printf("Could not populate %v, err %v: continuing anyway", homeEnv, err)
+		}
 		if err := xrunuser(); err != nil {
 			log.Fatalf("x11 user failed: %v", err)
 		}
