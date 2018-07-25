@@ -243,6 +243,19 @@ func xrunuser() error {
 }
 
 func main() {
+	// nasty, but I'm sick of losing boot messages.
+	f, err := os.OpenFile("/log", os.O_RDWR|os.O_CREATE, 0755)
+	if err == nil {
+		fd := int(f.Fd())
+		if err := syscall.Dup2(fd, 1); err != nil {
+			log.Printf("Could not dup %v over 1: %v", fd, err)
+		}
+		if err := syscall.Dup2(fd, 2); err != nil {
+			log.Printf("Could not dup %v over 2: %v", fd, err)
+		}
+	} else {
+		log.Printf("Can't open /log: %v", err)
+	}
 	log.Print("Welcome to NiChrome!")
 	flag.Parse()
 	if *usernamespace {
