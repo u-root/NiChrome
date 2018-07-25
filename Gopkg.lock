@@ -60,7 +60,7 @@
   branch = "master"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
-  revision = "0cb4f732569330e7b40d8fcee91c41aafaaddc4f"
+  revision = "93b26e6a70e37abb14f2f88194949312b0592a84"
 
 [[projects]]
   name = "github.com/jmank88/nuts"
@@ -78,7 +78,7 @@
   branch = "master"
   name = "github.com/pelletier/go-toml"
   packages = ["."]
-  revision = "603baefff989777996bf283da430d693e78eba3a"
+  revision = "c2dbbc24a97911339e01bda0b8cabdbd8f13b602"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -102,13 +102,13 @@
     "pkg/uio",
     "pkg/uroot/util"
   ]
-  revision = "ce748b8c28d4358dd8839ca9092f2f5af3f42051"
+  revision = "8663d31588dd68de48325e87b3801b2849ee8124"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "039a4258aec0ad3c79b905677cceeab13b296a77"
+  revision = "3673e40ba22529d22c3fd7c93e97b0ce50fa7bdd"
 
 [[projects]]
   branch = "master"
@@ -120,7 +120,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "1b2967e3c290b7c545b3db0deeda16e9be4f98a2"
+  revision = "e072cadbbdc8dd3d3ffa82b8b4b9304c261d9311"
 
 [solve-meta]
   analyzer-name = "dep"
