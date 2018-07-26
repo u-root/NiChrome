@@ -5,7 +5,8 @@ package main
 var (
 	// Note the -skip needs to be first
 	tczList = []string{
-		"-skip", "graphics-KERNEL wireless-KERNEL",
+		"-skip", "graphics-KERNEL alsa-modules-KERNEL wireless-KERNEL",
+		"alsa", "alsa-config", "alsa-plugins",
 		"aterm",
 		"bash",
 		"strace",
