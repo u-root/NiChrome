@@ -8,7 +8,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"flag"
+	flag "github.com/spf13/pflag"
 	"fmt"
 	"io"
 	"io/ioutil"
