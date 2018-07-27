@@ -12,7 +12,7 @@
   2. On your build machine, run `go get github.com/u-root/u-root github.com/u-root/NiChrome` to fetch the source code.
   3. Navigate to $GOPATH/src/github.com/u-root/NiChrome/usb and run `go build .` to compile the USB build tool.
   4. Insert your formatted USB stick and determine its dev directory (/dev/sdX)
-  5. Move back up to the NiChrome directory and run `./usb/usb -fetch=true -dev=/dev/sdX` to build NiChrome and load it onto the USB.
+  5. Move back up to the NiChrome directory and run `./usb/usb --fetch=true --dev=/dev/sdX` to build NiChrome and load it onto the USB.
   6. On your Chromebook, boot into NiChrome by inserting the USB and pressing Ctrl-U. If this fails, see the Notes below.
   7. Run `install /dev/mmcblkX` to install NiChrome on the secondary boot partition (X will be either 0 or 1, depending on your system. Tab-complete to be safe)
   8. Set NiChrome's boot priority by running `/vboot_reference/build/cgpt/cgpt add -i 4 -P 2 -T 1 -S 0 /dev/mmcblkX`
