@@ -1,0 +1,21 @@
+# The file /tmp/t3 was produced as follows:
+# go run usb/*.go -dev=/tmp/t
+# /tmp/t2 and /tmp/t3 are created and you can use /tmp/t3
+# as hda as shown below.
+# -s is gdb
+# -monitor allows you to hit ^C in the term window you start
+# this from to kill QEMU
+qemu-system-x86_64 \
+-m 2048M \
+-cpu max \
+-machine pc-q35-zesty \
+-kernel linux-stable/arch/x86/boot/bzImage \
+-s \
+-monitor /dev/null \
+-serial stdio \
+-vga cirrus \
+-append 'nichromeroot=/dev/sda' \
+-drive id=disk,file=/tmp/t3,if=none  \
+-device ich9-ahci,id=ahci  \
+-device ide-drive,drive=disk,bus=ahci.0  \
+

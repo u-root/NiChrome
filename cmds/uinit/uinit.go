@@ -270,6 +270,39 @@ func xrunuser() error {
 	return x11("/usr/local/bin/aterm")
 }
 
+func cpioRoot(r string) error {
+	var err error
+	log.Printf("Try device %v", r)
+	cmd := exec.Command("cpio", "i")
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	if cmd.Stdin, err = os.Open(r); err != nil {
+		return fmt.Errorf("%v", err)
+	}
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("cpio of tcz failed %v", err)
+	}
+	return nil
+}
+// This is a best effort. It does not return an error because
+// an error may not really be an error; we may be intentionally
+// running without a root.
+func guidRoot() {
+	// USB sucks.
+	// We've tried a few variants of this loop so far trying for
+	// 10 seconds and waiting for 1 second each time has been the best.
+	for i := 0; i < 10; i++ {
+		r, err := findRoot("/dev/sda", "/dev/sdb", "/dev/mmcblk0", "/dev/mmcblk1")
+		if err != nil {
+			log.Printf("Could not find root: %v", err)
+		} else {
+			if err := cpioRoot(r); err == nil {
+				break
+			}
+		}
+		time.Sleep(time.Second)
+	}
+}
+
 func main() {
 	// nasty, but I'm sick of losing boot messages.
 	f, err := os.OpenFile("/log", os.O_RDWR|os.O_CREATE, 0755)
@@ -318,32 +351,10 @@ func main() {
 		verbose = true
 	}
 
-	var cpio bool
-	// USB sucks.
-	// We've tried a few variants of this loop so far trying for
-	// 10 seconds and waiting for 1 second each time has been the best.
-	for i := 0; i < 10; i++ {
-		r, err := findRoot("/dev/sda", "/dev/sdb", "/dev/mmcblk0", "/dev/mmcblk1")
-		if err != nil {
-			log.Printf("Could not find root: %v", err)
-		} else {
-			log.Printf("Try device %v", r)
-			cmd := exec.Command("cpio", "i")
-			cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
-			if cmd.Stdin, err = os.Open(r); err == nil {
-				if err := cmd.Run(); err != nil {
-					log.Printf("cpio of tcz failed %v; continuing", err)
-				} else {
-					cpio = true
-				}
-			} else {
-				log.Printf("Can't open (%v); not trying to cpio it", r)
-			}
-			if cpio {
-				break
-			}
-		}
-		time.Sleep(time.Second)
+	if d, ok := cmdline["nichromeroot"]; ok {
+		cpioRoot(d)
+	} else {
+		guidRoot()
 	}
 
 	if err := tczSetup(); err != nil {
