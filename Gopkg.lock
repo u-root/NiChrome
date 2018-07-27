@@ -2,11 +2,10 @@
 
 
 [[projects]]
-  branch = "parse-constraints-with-dash-in-pre"
+  branch = "2.x"
   name = "github.com/Masterminds/semver"
   packages = ["."]
-  revision = "a93e51b5a57ef416dac8bb02d11407b6f55d8929"
-  source = "https://github.com/carolynvs/semver.git"
+  revision = "3c92f33da7a84de8314f3ff82e5f919b89fd1492"
 
 [[projects]]
   name = "github.com/Masterminds/vcs"
@@ -27,12 +26,6 @@
   version = "v1.3.1"
 
 [[projects]]
-  name = "github.com/go-yaml/yaml"
-  packages = ["."]
-  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
-  version = "v2.2.1"
-
-[[projects]]
   name = "github.com/golang/dep"
   packages = [
     ".",
@@ -41,6 +34,7 @@
     "gps/internal/pb",
     "gps/paths",
     "gps/pkgtree",
+    "gps/verify",
     "internal/feedback",
     "internal/fs",
     "internal/importers",
@@ -53,14 +47,14 @@
     "internal/importers/gvt",
     "internal/importers/vndr"
   ]
-  revision = "37d9ea0ac16f0e0a05afc3b60e1ac8c364b6c329"
-  version = "v0.4.1"
+  revision = "224a564abe296670b692fe08bb63a3e4c4ad7978"
+  version = "v0.5.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
-  revision = "93b26e6a70e37abb14f2f88194949312b0592a84"
+  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
+  version = "v1.1.0"
 
 [[projects]]
   name = "github.com/jmank88/nuts"
@@ -75,10 +69,10 @@
   revision = "0ad87eef1443f64d3d8c50da647e2b1552851124"
 
 [[projects]]
-  branch = "master"
   name = "github.com/pelletier/go-toml"
   packages = ["."]
-  revision = "c2dbbc24a97911339e01bda0b8cabdbd8f13b602"
+  revision = "c01d1270ff3e442a8a57cddc1c92dc1138598194"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -93,6 +87,12 @@
   revision = "836a144573533ea4da4e6929c235fd348aed1c80"
 
 [[projects]]
+  name = "github.com/spf13/pflag"
+  packages = ["."]
+  revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
+  version = "v1.0.1"
+
+[[projects]]
   branch = "master"
   name = "github.com/u-root/u-root"
   packages = [
@@ -102,7 +102,7 @@
     "pkg/uio",
     "pkg/uroot/util"
   ]
-  revision = "8663d31588dd68de48325e87b3801b2849ee8124"
+  revision = "526076eaa9759304f1938d9f1fe37f90810d474a"
 
 [[projects]]
   branch = "master"
@@ -120,11 +120,17 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "e072cadbbdc8dd3d3ffa82b8b4b9304c261d9311"
+  revision = "10b189e7aa37dd026e4c1c16d84c6515a393f8ed"
+
+[[projects]]
+  name = "gopkg.in/yaml.v2"
+  packages = ["."]
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2512bda9df7f0b96f0068d7e9e0fd6523865509f9aed9017dd996a3944a9da1f"
+  inputs-digest = "b4c182d12616f2f40a1481f11d3b54840c42c4c92cfb4c8211527d3ff1e1ae79"
   solver-name = "gps-cdcl"
   solver-version = 1
