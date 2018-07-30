@@ -203,7 +203,7 @@ func dousernamespace() error {
 
 	// due to limits of Go runtime we have to run ourselves again with -login
 	// and build a namespace.
-	cmd := exec.Command("/bbin/uinit", "-login")
+	cmd := exec.Command("/bbin/uinit", "--login")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Unshareflags: syscall.CLONE_NEWNS}
 	cmd.Env = append(os.Environ(), fmt.Sprintf("USER=%v", userEnv), fmt.Sprintf("HOME=%v", homeEnv))
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
@@ -224,7 +224,7 @@ func dologin() error {
 
 	if err == nil {
 		// due to limits of Go runtime we have to run ourselves again with -user.
-		cmd := exec.Command("/bbin/uinit", "-user")
+		cmd := exec.Command("/bbin/uinit", "--user")
 		cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: 1000, Gid: 1000, NoSetGroups: true}}
 		cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 		if err := cmd.Run(); err != nil {
