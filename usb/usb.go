@@ -290,6 +290,8 @@ func buildKernel() error {
 	if err := cp(*config, "linux-stable/.config"); err != nil {
 		fmt.Printf("copying %v to linux-stable/.config: %v", *config, err)
 	}
+	// load NiChrome logo into kernel
+	cp("logo/logo_linux_clut224.ppm", "linux-stable/drivers/video/logo/logo_linux_clut224.ppm")
 
 	cmd := exec.Command("make", "--directory", "linux-stable", "-j"+strconv.Itoa(threads))
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
