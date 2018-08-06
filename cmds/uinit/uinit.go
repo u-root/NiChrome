@@ -31,7 +31,8 @@ const (
 )
 
 var (
-	startupCmds   = []string{"sos", "wifi"}
+	rootStartCmds = []string{"sos", "wifi"}
+	userStartCmds = []string{"wingo", "AppChrome", "upspin_sos", "chrome"}
 	cmdline       = make(map[string]string)
 	debug         = func(string, ...interface{}) {}
 	usernamespace = flag.Bool("usernamespace", false, "Set up user namespaces and spawn login")
@@ -261,7 +262,7 @@ func homedir() error {
 }
 
 func xrunuser() error {
-	for _, f := range []string{"wingo", "AppChrome", "upspin_sos", "chrome"} {
+	for _, f := range userStartCmds {
 		log.Printf("Run %v", f)
 		go x11(f)
 	}
@@ -283,6 +284,7 @@ func cpioRoot(r string) error {
 	}
 	return nil
 }
+
 // This is a best effort. It does not return an error because
 // an error may not really be an error; we may be intentionally
 // running without a root.
@@ -451,7 +453,7 @@ func main() {
 		log.Print(err)
 	}
 
-	for _, f := range startupCmds {
+	for _, f := range rootStartCmds {
 		log.Printf("Run %v", f)
 		go x11(f)
 		// we have to give it a little time until we make it smarter
