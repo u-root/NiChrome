@@ -17,7 +17,7 @@
   branch = "master"
   name = "github.com/armon/go-radix"
   packages = ["."]
-  revision = "1fca145dffbcaa8fe914309b1ec0cfc67500fe61"
+  revision = "7fddfc383310abc091d79a27f116d30cf0424032"
 
 [[projects]]
   name = "github.com/boltdb/bolt"
@@ -89,8 +89,8 @@
 [[projects]]
   name = "github.com/spf13/pflag"
   packages = ["."]
-  revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
-  version = "v1.0.1"
+  revision = "9a97c102cda95a86cec2345a6f09f55a939babf5"
+  version = "v1.0.2"
 
 [[projects]]
   branch = "master"
@@ -102,13 +102,13 @@
     "pkg/uio",
     "pkg/uroot/util"
   ]
-  revision = "526076eaa9759304f1938d9f1fe37f90810d474a"
+  revision = "4fed9c9f3497932004cb777e28e1a2af7260fb83"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "3673e40ba22529d22c3fd7c93e97b0ce50fa7bdd"
+  revision = "c39426892332e1bb5ec0a434a079bf82f5d30c54"
 
 [[projects]]
   branch = "master"
@@ -120,7 +120,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "10b189e7aa37dd026e4c1c16d84c6515a393f8ed"
+  revision = "14742f9018cd6651ec7364dc6ee08af0baaa1031"
 
 [[projects]]
   name = "gopkg.in/yaml.v2"
