@@ -31,7 +31,7 @@ const (
 )
 
 var (
-	rootStartCmds = []string{"sos", "wifi"}
+	rootStartCmds = []string{"sos", "wifi", "time_sos"}
 	userStartCmds = []string{"wingo", "AppChrome", "upspin_sos", "chrome"}
 	cmdline       = make(map[string]string)
 	debug         = func(string, ...interface{}) {}
