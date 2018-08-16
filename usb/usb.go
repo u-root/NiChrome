@@ -211,7 +211,7 @@ func goBuildDynamic() error {
 	args = append(args, "-files", "pkg/sos/html:etc/sos/html")
 	bbpath := filepath.Join(os.Getenv("GOPATH"), "src/github.com/u-root/u-root")
 	args = append(args, dynamicCmdList...)
-	args = append(args, "core")
+	args = append(args, "github.com/u-root/u-root/cmds/*")
 	cmd := exec.Command("go", args...)
 	cmd.Dir = bbpath
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr

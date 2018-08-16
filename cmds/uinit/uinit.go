@@ -130,7 +130,7 @@ func findRoot(devs ...string) (string, error) {
 
 func x11(n string, args ...string) error {
 	out := os.Stdout
-	f, err := ioutil.TempFile("", n)
+	f, err := ioutil.TempFile("", filepath.Base(n))
 	if err != nil {
 		log.Print(err)
 	} else {
