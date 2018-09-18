@@ -3,29 +3,46 @@
 
 [[projects]]
   branch = "2.x"
+  digest = "1:f198c9213547e59cb10260bf9c3c1bf6e760298ef5268e1f980d950e0d317880"
   name = "github.com/Masterminds/semver"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "3c92f33da7a84de8314f3ff82e5f919b89fd1492"
 
 [[projects]]
+  digest = "1:43e3179235895fe92135ab152876c60c1eb4e13c4a9d70edf30e13150fc93528"
   name = "github.com/Masterminds/vcs"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "6f1c6d150500e452704e9863f68c2559f58616bf"
   version = "v1.12.0"
 
 [[projects]]
-  branch = "master"
+  digest = "1:e5ca3dcabf1452b51be600af6e2ce0a93a94978ae231af802cf9736bdbd835cb"
   name = "github.com/armon/go-radix"
   packages = ["."]
-  revision = "7fddfc383310abc091d79a27f116d30cf0424032"
+  pruneopts = "NUT"
+  revision = "1a2de0c21c94309923825da3df33a4381872c795"
+  version = "v1.0.0"
 
 [[projects]]
+  digest = "1:a12d94258c5298ead75e142e8001224bf029f302fed9e96cd39c0eaf90f3954d"
   name = "github.com/boltdb/bolt"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "2f1ce7a837dcb8da3ec595b1dac9d0632f0f99e8"
   version = "v1.3.1"
 
 [[projects]]
+  branch = "master"
+  digest = "1:b7ffca49e9cfd3dfb04a8e0a59347708c6f78f68476a32c5e0a0edca5d1b258c"
+  name = "github.com/dustin/go-humanize"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "9f541cc9db5d55bce703bd99987c9d5cb8eea45e"
+
+[[projects]]
+  digest = "1:4bd35ef7277f7dd4c1bf2bc95ea5c8ca5638de76ad99a0f57faefc6c25a25b5f"
   name = "github.com/golang/dep"
   packages = [
     ".",
@@ -45,92 +62,124 @@
     "internal/importers/govend",
     "internal/importers/govendor",
     "internal/importers/gvt",
-    "internal/importers/vndr"
+    "internal/importers/vndr",
   ]
+  pruneopts = "NT"
   revision = "224a564abe296670b692fe08bb63a3e4c4ad7978"
   version = "v0.5.0"
 
 [[projects]]
+  digest = "1:97df918963298c287643883209a2c3f642e6593379f97ab400c2a2e219ab647d"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
-  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
-  version = "v1.1.0"
+  pruneopts = "NUT"
+  revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
+  version = "v1.2.0"
 
 [[projects]]
+  digest = "1:f5169729244becc423886eae4d72547e28ac3f13f861bed8a9d749bc7238a1c3"
   name = "github.com/jmank88/nuts"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "8b28145dffc87104e66d074f62ea8080edfad7c8"
   version = "v0.3.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:26217ee135b8157549e648efe97dff3282e4bd597a912d784db964df41067f29"
   name = "github.com/nightlyone/lockfile"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "0ad87eef1443f64d3d8c50da647e2b1552851124"
 
 [[projects]]
+  digest = "1:51ea800cff51752ff68e12e04106f5887b4daec6f9356721238c28019f0b42db"
   name = "github.com/pelletier/go-toml"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "c01d1270ff3e442a8a57cddc1c92dc1138598194"
   version = "v1.2.0"
 
 [[projects]]
+  digest = "1:5cf3f025cbee5951a4ee961de067c8a89fc95a5adabead774f82822efabab121"
   name = "github.com/pkg/errors"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
   version = "v0.8.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:abb4b60c28323cde32c193ce6083bb600fac462d1780cf83461b4c23ed5ce904"
   name = "github.com/sdboyer/constext"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "836a144573533ea4da4e6929c235fd348aed1c80"
 
 [[projects]]
+  digest = "1:e3707aeaccd2adc89eba6c062fec72116fe1fc1ba71097da85b4d8ae1668a675"
   name = "github.com/spf13/pflag"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "9a97c102cda95a86cec2345a6f09f55a939babf5"
   version = "v1.0.2"
 
 [[projects]]
   branch = "master"
+  digest = "1:984ce8d6989f2f866768d4cb55bf040437a88a62a6ab5ba703380b86a939bbdd"
   name = "github.com/u-root/u-root"
   packages = [
     "pkg/cmdline",
     "pkg/cpio",
     "pkg/gpt",
+    "pkg/ls",
     "pkg/uio",
-    "pkg/uroot/util"
+    "pkg/uroot/util",
   ]
-  revision = "4fed9c9f3497932004cb777e28e1a2af7260fb83"
+  pruneopts = "NUT"
+  revision = "3f5cc0bbb5e4affd99a9cc1d2ecbebb15d85a425"
 
 [[projects]]
   branch = "master"
+  digest = "1:76ee51c3f468493aff39dbacc401e8831fbb765104cbf613b89bef01cf4bad70"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "c39426892332e1bb5ec0a434a079bf82f5d30c54"
+  pruneopts = "NUT"
+  revision = "26e67e76b6c3f6ce91f7c52def5af501b4e0f3a2"
 
 [[projects]]
   branch = "master"
+  digest = "1:39ebcc2b11457b703ae9ee2e8cca0f68df21969c6102cb3b705f76cca0ea0239"
   name = "golang.org/x/sync"
   packages = ["errgroup"]
+  pruneopts = "NUT"
   revision = "1d60e4601c6fd243af51cc01ddf169918a5407ca"
 
 [[projects]]
   branch = "master"
+  digest = "1:e87594335f7fc5df850c2673c46896af42963d497be3e2a358d43e5b1163e852"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "14742f9018cd6651ec7364dc6ee08af0baaa1031"
+  pruneopts = "NUT"
+  revision = "ee1b12c67af419cf5a9be3bdbeea7fc1c5f32f11"
 
 [[projects]]
+  digest = "1:7c95b35057a0ff2e19f707173cc1a947fa43a6eb5c4d300d196ece0334046082"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
+  pruneopts = "NUT"
   revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
   version = "v2.2.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b4c182d12616f2f40a1481f11d3b54840c42c4c92cfb4c8211527d3ff1e1ae79"
+  input-imports = [
+    "github.com/golang/dep/cmd/dep",
+    "github.com/spf13/pflag",
+    "github.com/u-root/u-root/pkg/cpio",
+    "github.com/u-root/u-root/pkg/gpt",
+    "github.com/u-root/u-root/pkg/uroot/util",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1
