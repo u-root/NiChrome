@@ -34,12 +34,12 @@
   version = "v1.3.1"
 
 [[projects]]
-  branch = "master"
   digest = "1:b7ffca49e9cfd3dfb04a8e0a59347708c6f78f68476a32c5e0a0edca5d1b258c"
   name = "github.com/dustin/go-humanize"
   packages = ["."]
   pruneopts = "NUT"
   revision = "9f541cc9db5d55bce703bd99987c9d5cb8eea45e"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:4bd35ef7277f7dd4c1bf2bc95ea5c8ca5638de76ad99a0f57faefc6c25a25b5f"
@@ -117,12 +117,12 @@
   revision = "836a144573533ea4da4e6929c235fd348aed1c80"
 
 [[projects]]
-  digest = "1:e3707aeaccd2adc89eba6c062fec72116fe1fc1ba71097da85b4d8ae1668a675"
+  digest = "1:9d8420bbf131d1618bde6530af37c3799340d3762cc47210c1d9532a4c3a2779"
   name = "github.com/spf13/pflag"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "9a97c102cda95a86cec2345a6f09f55a939babf5"
-  version = "v1.0.2"
+  revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
+  version = "v1.0.3"
 
 [[projects]]
   branch = "master"
@@ -137,7 +137,7 @@
     "pkg/uroot/util",
   ]
   pruneopts = "NUT"
-  revision = "3f5cc0bbb5e4affd99a9cc1d2ecbebb15d85a425"
+  revision = "1b580d91f0f448d6bba7ee0d45d68b8aa0b14e2f"
 
 [[projects]]
   branch = "master"
@@ -145,7 +145,7 @@
   name = "golang.org/x/net"
   packages = ["context"]
   pruneopts = "NUT"
-  revision = "26e67e76b6c3f6ce91f7c52def5af501b4e0f3a2"
+  revision = "c44066c5c816ec500d459a2a324a753f78531ae0"
 
 [[projects]]
   branch = "master"
@@ -157,11 +157,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e87594335f7fc5df850c2673c46896af42963d497be3e2a358d43e5b1163e852"
+  digest = "1:777d58063db2ef2af9a6bfbf74d7c27b12894b0aad709891b963282e07932b8a"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "NUT"
-  revision = "ee1b12c67af419cf5a9be3bdbeea7fc1c5f32f11"
+  revision = "9b800f95dbbc54abff0acf7ee32d88ba4e328c89"
 
 [[projects]]
   digest = "1:7c95b35057a0ff2e19f707173cc1a947fa43a6eb5c4d300d196ece0334046082"
