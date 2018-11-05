@@ -31,8 +31,8 @@ const (
 )
 
 var (
-	rootStartCmds = []string{"sos", "wifi", "time_sos"}
-	userStartCmds = []string{"wingo", "AppChrome", "upspin_sos", "chrome"}
+	rootStartCmds = []string{"sos", "wifi", "timesos"}
+	userStartCmds = []string{"wingo", "AppChrome", "upspinsos", "chrome"}
 	cmdline       = make(map[string]string)
 	debug         = func(string, ...interface{}) {}
 	usernamespace = flag.Bool("usernamespace", false, "Set up user namespaces and spawn login")
