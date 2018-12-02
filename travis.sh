@@ -4,8 +4,8 @@ if [ -z "${GOPATH}" ]; then
 fi
 set -e
 
-echo "Check vendored dependencies"
-(dep status)
+#echo "Check vendored dependencies"
+#(dep status)
 
 (cd usb && go build .)
 ./usb/usb --apt=true --fetch=true --dev=/dev/null
