@@ -189,7 +189,7 @@ func goGet() error {
 func goBuildStatic() error {
 	oFile := filepath.Join(workingDir, "linux-stable", initramfs)
 	bbpath := filepath.Join(os.Getenv("GOPATH"), "src/github.com/u-root/u-root")
-	args := []string{"run", "u-root.go", "-o", oFile, "-build=bb", "core"}
+	args := []string{"run", ".", "-o", oFile, "-build=bb", "core"}
 	cmd := exec.Command("go", append(args, staticCmdList...)...)
 	cmd.Dir = bbpath
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
@@ -201,7 +201,7 @@ func goBuildStatic() error {
 }
 
 func goBuildDynamic() error {
-	args := []string{"run", "u-root.go", "-o", filepath.Join(workingDir, initramfs)}
+	args := []string{"run", ".", "-o", filepath.Join(workingDir, initramfs)}
 	for _, v := range []string{"usr", "lib", "tcz", "etc", "upspin", ".ssh"} {
 		if _, err := os.Stat(v); err != nil {
 			continue
