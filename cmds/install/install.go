@@ -1,9 +1,16 @@
+// Copyright 2018 the u-root Authors. All rights reserved
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 // install installs a NiChrome image from a USB stick onto the local drive.
 // It verifies, first, that it can enumerate the partitions correctly
 // on the destination. It uses guid_root to rewrite the GPT partition
 // guids for the target partition(s).
 // It defaults to only installing the B images, since we assume
 // for now we are still in hacker mode.
+
+// +build go1.11
+
 package main
 
 import (
