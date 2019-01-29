@@ -9,6 +9,7 @@ usb/usb
 *~
 uinit/uinit
 tcz/
+.bb/
 
 # definitely ignore upspin! It may have keys.
 upspin/
