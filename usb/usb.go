@@ -212,10 +212,13 @@ func goBuildDynamic() error {
 		}
 		args = append(args, "-files", filepath.Join(workingDir, v)+":"+v)
 	}
-	args = append(args, "-files", "pkg/sos/html:etc/sos/html")
+	log.Print("WARNING: skipping pkg/sos/html; fix me")
+	if false {
+		args = append(args, "-files", "pkg/sos/html:etc/sos/html")
+	}
 	bbpath := filepath.Join(os.Getenv("GOPATH"), "src/github.com/u-root/u-root")
 	args = append(args, dynamicCmdList...)
-	args = append(args, "github.com/u-root/u-root/cmds/*")
+	args = append(args, "github.com/u-root/u-root/cmds/*/*")
 	cmd := exec.Command("go", args...)
 	cmd.Dir = bbpath
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
@@ -338,7 +341,7 @@ func buildVbutil() error {
 }
 
 func installUrootGpt() error {
-	cmd := exec.Command("go", "install", "-x", "github.com/u-root/u-root/cmds/gpt/")
+	cmd := exec.Command("go", "install", "-x", "github.com/u-root/u-root/cmds/core/gpt/")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	return cmd.Run()
 }
@@ -439,7 +442,7 @@ func tcz() error {
 	t := filepath.Join(os.Getenv("GOPATH"), "bin/tcz")
 	if _, err := os.Stat(t); err != nil {
 		// let's try to be nice about this
-		if err := run("go", "install", "github.com/u-root/u-root/cmds/tcz"); err != nil {
+		if err := run("go", "install", "github.com/u-root/u-root/cmds/exp/tcz"); err != nil {
 			return fmt.Errorf("Building tcz: %v", err)
 		}
 	}
@@ -471,7 +474,7 @@ func allFunc() error {
 		{f: goGet, skip: *skipkern || !*fetch, ignore: false, n: "Get u-root source"},
 		{f: tcz, skip: *skiproot || !*fetch, ignore: false, n: "run tcz to create the directory of packages"},
 		{f: getSUIDbinaries, skip: *skiproot, ignore: false, n: "Get SUID binaries"},
-		{f: chrome, skip: *skiproot || !*fetch, ignore: false, n: "Fetch chrome"},
+		{f: chrome, skip: true || *skiproot || !*fetch, ignore: false, n: "to hell with chrome -- let's get firefox"},
 		{f: aptget, skip: !*apt, ignore: false, n: "apt get"},
 		{f: goBuildDynamic, skip: *skiproot, ignore: false, n: "Build dynamic initramfs"},
 		{f: rootdd, skip: *skiproot, ignore: false, n: "Put the tcz cpio onto the stick"},
