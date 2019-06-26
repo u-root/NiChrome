@@ -9,8 +9,8 @@
 package main
 
 import (
-	flag "github.com/spf13/pflag"
 	"fmt"
+	flag "github.com/spf13/pflag"
 	"io"
 	"io/ioutil"
 	"log"
@@ -371,7 +371,7 @@ func main() {
 	}
 
 	// buildbin was not populated, potentially, so we have to do it again.
-	c, err := filepath.Glob("/src/github.com/u-root/*/cmds/[a-z]*")
+	c, err := filepath.Glob("/src/github.com/u-root/*/cmds/*/[a-z]*")
 	if err != nil || len(c) == 0 {
 		log.Printf("In a break with tradition, you seem to have NO u-root commands: %v", err)
 	}
@@ -399,7 +399,7 @@ func main() {
 	//os.Setenv("GOBIN", "/buildbin")
 	// util.CmdsPath vanished
 	//a = append(a, "-o", "/buildbin/installcommand", filepath.Join(util.CmdsPath, "installcommand"))
-	a = append(a, "-o", "/buildbin/installcommand", "github.com/u-root/u-root/cmds/installcommand")
+	a = append(a, "-o", "/buildbin/installcommand", "github.com/u-root/u-root/cmds/core/installcommand")
 	icmd := exec.Command("go", a...)
 	installenvs := envs
 	installenvs = append(envs, "GOBIN=/buildbin")

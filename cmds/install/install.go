@@ -14,8 +14,8 @@
 package main
 
 import (
-	flag "github.com/spf13/pflag"
 	"fmt"
+	flag "github.com/spf13/pflag"
 	"io"
 	"io/ioutil"
 	"log"
@@ -152,7 +152,7 @@ func main() {
 	if _, err := io.Copy(destKern, kern); err != nil {
 		log.Fatal(err)
 	}
-	
+
 	archiver, err := cpio.Format("newc")
 	if err != nil {
 		log.Fatalf("newc not supported: %v", err)
