@@ -77,6 +77,14 @@
   version = "v1.2.0"
 
 [[projects]]
+  digest = "1:3c8c26bb118e3f02230d4f5f30b972dbfe0c6b371acea8f190aa99ceaaae7028"
+  name = "github.com/gorilla/mux"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "00bdffe0f3c77e27d2cf6f5c70232a2d3e4d9c15"
+  version = "v1.7.3"
+
+[[projects]]
   digest = "1:f5169729244becc423886eae4d72547e28ac3f13f861bed8a9d749bc7238a1c3"
   name = "github.com/jmank88/nuts"
   packages = ["."]
@@ -126,19 +134,28 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:433813e201f2d648a811bf3423db114b37a78da4643670cd0bf2b7d7c4f1c096"
+  digest = "1:36bb5924c63473143a2eb8f6d417b5c1fe07edbb8a085560615cfe5403a4168d"
   name = "github.com/u-root/u-root"
   packages = [
     "pkg/cmdline",
     "pkg/cpio",
     "pkg/gpt",
     "pkg/ls",
+    "pkg/sos",
     "pkg/ubinary",
     "pkg/uio",
     "pkg/uroot/util",
   ]
   pruneopts = "NUT"
   revision = "f24a1c26aa2e273380ac7df57effad88b529c576"
+
+[[projects]]
+  branch = "master"
+  digest = "1:f92f6956e4059f6a3efc14924d2dd58ba90da25cc57fe07ae3779ef2f5e0c5f2"
+  name = "golang.org/x/crypto"
+  packages = ["pbkdf2"]
+  pruneopts = "NUT"
+  revision = "4def268fd1a49955bfb3dda92fe3db4f924f2285"
 
 [[projects]]
   branch = "master"
@@ -169,10 +186,13 @@
   analyzer-version = 1
   input-imports = [
     "github.com/golang/dep/cmd/dep",
+    "github.com/gorilla/mux",
     "github.com/spf13/pflag",
     "github.com/u-root/u-root/pkg/cpio",
     "github.com/u-root/u-root/pkg/gpt",
+    "github.com/u-root/u-root/pkg/sos",
     "github.com/u-root/u-root/pkg/uroot/util",
+    "golang.org/x/crypto/pbkdf2",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
