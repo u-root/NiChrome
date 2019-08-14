@@ -14,7 +14,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/u-root/u-root/pkg/sos"
+	"github.com/u-root/NiChrome/pkg/sos"
 	"github.com/u-root/NiChrome/pkg/wifi"
 )
 
