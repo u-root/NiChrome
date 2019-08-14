@@ -2,10 +2,6 @@ required = [
   "github.com/golang/dep/cmd/dep"
 ]
 
-[[constraint]]
-  branch = "master"
-  name = "github.com/u-root/u-root"
-
 [prune]
   non-go = true
   go-tests = true

@@ -10,12 +10,12 @@
   revision = "3c92f33da7a84de8314f3ff82e5f919b89fd1492"
 
 [[projects]]
-  digest = "1:43e3179235895fe92135ab152876c60c1eb4e13c4a9d70edf30e13150fc93528"
+  digest = "1:5e4de188bac29c98e6d747ff06911d6ce515646c318f7d65f45ffe96c59dc0aa"
   name = "github.com/Masterminds/vcs"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "6f1c6d150500e452704e9863f68c2559f58616bf"
-  version = "v1.12.0"
+  revision = "f94282d8632a0620f79f0c6ff0e82604e8c5c85b"
+  version = "v1.13.1"
 
 [[projects]]
   digest = "1:e5ca3dcabf1452b51be600af6e2ce0a93a94978ae231af802cf9736bdbd835cb"
@@ -42,7 +42,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:4bd35ef7277f7dd4c1bf2bc95ea5c8ca5638de76ad99a0f57faefc6c25a25b5f"
+  digest = "1:ed1c52061aeabab2761bf8a1597f812a3161e04a6a2ea96bd2c5ae8f9096aee1"
   name = "github.com/golang/dep"
   packages = [
     ".",
@@ -65,16 +65,16 @@
     "internal/importers/vndr",
   ]
   pruneopts = "NT"
-  revision = "224a564abe296670b692fe08bb63a3e4c4ad7978"
-  version = "v0.5.0"
+  revision = "1f7c19e5f52f49ffb9f956f64c010be14683468b"
+  version = "v0.5.4"
 
 [[projects]]
-  digest = "1:97df918963298c287643883209a2c3f642e6593379f97ab400c2a2e219ab647d"
+  digest = "1:573ca21d3669500ff845bdebee890eb7fc7f0f50c59f2132f2a0c6b03d85086a"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
   pruneopts = "NUT"
-  revision = "aa810b61a9c79d51363740d207bb46cf8e620ed5"
-  version = "v1.2.0"
+  revision = "6c65a5562fc06764971b7c5d05c76c75e84bdbf7"
+  version = "v1.3.2"
 
 [[projects]]
   digest = "1:3c8c26bb118e3f02230d4f5f30b972dbfe0c6b371acea8f190aa99ceaaae7028"
@@ -101,12 +101,12 @@
   revision = "0ad87eef1443f64d3d8c50da647e2b1552851124"
 
 [[projects]]
-  digest = "1:51ea800cff51752ff68e12e04106f5887b4daec6f9356721238c28019f0b42db"
+  digest = "1:4e9827f31d4fc1ddd732a0e3af4e863d281dd405adb2bfb96a25cc5346a77caf"
   name = "github.com/pelletier/go-toml"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "c01d1270ff3e442a8a57cddc1c92dc1138598194"
-  version = "v1.2.0"
+  revision = "728039f679cbcd4f6a54e080d2219a4c4928c546"
+  version = "v1.4.0"
 
 [[projects]]
   digest = "1:14715f705ff5dfe0ffd6571d7d201dd8e921030f8070321a79380d8ca4ec1a24"
@@ -133,21 +133,20 @@
   version = "v1.0.3"
 
 [[projects]]
-  branch = "master"
-  digest = "1:36bb5924c63473143a2eb8f6d417b5c1fe07edbb8a085560615cfe5403a4168d"
+  digest = "1:1399e838d21e76f3b54883253f4c586f6b7bbde6b731b586e3ad879390b5b6cf"
   name = "github.com/u-root/u-root"
   packages = [
     "pkg/cmdline",
     "pkg/cpio",
     "pkg/gpt",
     "pkg/ls",
-    "pkg/sos",
     "pkg/ubinary",
     "pkg/uio",
     "pkg/uroot/util",
   ]
   pruneopts = "NUT"
-  revision = "f24a1c26aa2e273380ac7df57effad88b529c576"
+  revision = "26a90287872f42e357dc889f6918855fc0fde4dc"
+  version = "v6.0.0"
 
 [[projects]]
   branch = "master"
@@ -163,15 +162,15 @@
   name = "golang.org/x/sync"
   packages = ["errgroup"]
   pruneopts = "NUT"
-  revision = "37e7f081c4d4c64e13b10787722085407fe5d15f"
+  revision = "112230192c580c3556b8cee6403af37a4fc5f28c"
 
 [[projects]]
   branch = "master"
-  digest = "1:5be6e111bef99ae60fa7a01266905c8050d8a43837d5c4840ff5417584d7418e"
+  digest = "1:4296892af119aaeedd6437125dbe67686a9e3043a6e54956fb8425a61d93d764"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "NUT"
-  revision = "b90733256f2e882e81d52f9126de08df5615afd9"
+  revision = "fde4db37ae7ad8191b03d30d27f258b5291ae4e3"
 
 [[projects]]
   digest = "1:18108594151654e9e696b27b181b953f9a90b16bf14d253dd1b397b025a1487f"
@@ -190,7 +189,6 @@
     "github.com/spf13/pflag",
     "github.com/u-root/u-root/pkg/cpio",
     "github.com/u-root/u-root/pkg/gpt",
-    "github.com/u-root/u-root/pkg/sos",
     "github.com/u-root/u-root/pkg/uroot/util",
     "golang.org/x/crypto/pbkdf2",
   ]
