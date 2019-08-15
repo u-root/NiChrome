@@ -14,7 +14,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/u-root/u-root/pkg/sos"
+	"github.com/u-root/NiChrome/pkg/sos"
 	"github.com/u-root/NiChrome/pkg/wifi"
 )
 
@@ -43,9 +43,9 @@ function sendConnect(elem, index) {
 	replaceWithConnecting(elem);
 	disableOtherButtons(elem);
 	essid = document.getElementById("essid".concat(index)).innerHTML
-	pass = document.getElementById("pass".concat(index)) ? 
+	pass = document.getElementById("pass".concat(index)) ?
 		document.getElementById("pass".concat(index)).value : ""
-	id = document.getElementById("id".concat(index)) ? 
+	id = document.getElementById("id".concat(index)) ?
 		document.getElementById("id".concat(index)).value : ""
 	fetch("http://localhost:{{.Port}}/connect", {
 		method: 'Post',
@@ -105,7 +105,7 @@ function disableOtherButtons(elem) {
     		continue;
     	}
     	btn.setAttribute("disabled", "true");
-    }	
+    }
 }
 </script>
 </head>
@@ -115,7 +115,7 @@ function disableOtherButtons(elem) {
 {{$WpaEap := 2}}
 {{$connectedEssid := .ConnectedEssid}}
 {{$connectingEssid := .ConnectingEssid}}
-<h1>Please choose your Wifi</h1> 
+<h1>Please choose your Wifi</h1>
 <table style="width:100%">
 	<tr>
     	<th>Essid</th>
