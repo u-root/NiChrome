@@ -59,8 +59,6 @@ rootwait
 		"golang",
 		"build-essential",
 		"git-core",
-		"gitk",
-		"git-gui",
 		"subversion",
 		"curl",
 		"python2.7",
