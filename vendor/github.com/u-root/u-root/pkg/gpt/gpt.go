@@ -357,9 +357,3 @@ func New(r io.ReaderAt) (*PartitionTable, error) {
 	p.Backup = b
 	return p, EqualParts(g, b)
 }
-
-// GetBlockSize returns the block size of device.
-func GetBlockSize(device string) (int, error) {
-	// TODO: scan device to determine block size.
-	return BlockSize, nil
-}
