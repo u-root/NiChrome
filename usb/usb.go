@@ -49,7 +49,7 @@ rootwait
 	rootDev  string
 	kernPart = 2
 
-	kernelVersion = "v4.12.7"
+	kernelVersion = "v5.10"
 	workingDir    = ""
 	linuxVersion  = "linux-stable"
 	homeDir       = ""
@@ -442,17 +442,7 @@ func run(name string, args ...string) error {
 }
 
 func tcz() error {
-	t := filepath.Join("tcz")
-	if _, err := os.Stat(t); err != nil {
-		// let's try to be nice about this
-		if err := run("go", "install", "github.com/u-root/u-root/cmds/exp/tcz"); err != nil {
-			return fmt.Errorf("Building tcz: %v", err)
-		}
-	}
-	if _, err := os.Stat(t); err != nil {
-		return err
-	}
-	return run(t, append([]string{"-d", "-i=false", "-r=tcz"}, tczList...)...)
+	return run("tcz", append([]string{"-d", "-i=false", "-r=tcz"}, tczList...)...)
 }
 
 func check() error {
