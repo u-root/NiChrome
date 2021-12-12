@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build !plan9
+// +build !plan9
+
 package ls
 
 import (
@@ -21,6 +24,8 @@ import (
 // Matches characters which would interfere with ls's formatting.
 var unprintableRe = regexp.MustCompile("[[:cntrl:]\n]")
 
+// FileInfo holds file metadata.
+//
 // Since `os.FileInfo` is an interface, it is difficult to tweak some of its
 // internal values. For example, replacing the starting directory with a dot.
 // `extractImportantParts` populates our own struct which we can modify at will
@@ -35,6 +40,7 @@ type FileInfo struct {
 	SymlinkTarget string
 }
 
+// FromOSFileInfo converts os.FileInfo to an ls.FileInfo.
 func FromOSFileInfo(path string, fi os.FileInfo) FileInfo {
 	var link string
 
@@ -59,7 +65,7 @@ func FromOSFileInfo(path string, fi os.FileInfo) FileInfo {
 	}
 }
 
-// Name returns a printable file name.
+// PrintableName returns a printable file name.
 func (fi FileInfo) PrintableName() string {
 	return unprintableRe.ReplaceAllLiteralString(fi.Name, "?")
 }

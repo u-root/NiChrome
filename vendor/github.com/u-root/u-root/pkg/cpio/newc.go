@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/u-root/u-root/pkg/uio"
 )
@@ -19,10 +20,8 @@ const (
 	magicLen  = 6
 )
 
-var (
-	// Newc is the newc CPIO record format.
-	Newc RecordFormat = newc{magic: newcMagic}
-)
+// Newc is the newc CPIO record format.
+var Newc RecordFormat = newc{magic: newcMagic}
 
 type header struct {
 	Ino        uint32
@@ -163,6 +162,9 @@ func (w *writer) WriteRecord(f Record) error {
 	if err != nil {
 		return err
 	}
+	if m != int64(f.Info.FileSize) {
+		return fmt.Errorf("WriteRecord: %s: wrote %d bytes of file instead of %d bytes; archive is now corrupt", f.Info.Name, m, f.Info.FileSize)
+	}
 	if c, ok := f.ReaderAt.(io.Closer); ok {
 		if err := c.Close(); err != nil {
 			return err
@@ -180,19 +182,84 @@ type reader struct {
 	pos int64
 }
 
+// discarder is used to implement ReadAt from a Reader
+// by reading, and discarding, data until the offset
+// is reached. It can only go forward. It is designed
+// for pipe-like files.
+type discarder struct {
+	r   io.Reader
+	pos int64
+}
+
+// ReadAt implements ReadAt for a discarder.
+// It is an error for the offset to be negative.
+func (r *discarder) ReadAt(p []byte, off int64) (int, error) {
+	if off-r.pos < 0 {
+		return 0, fmt.Errorf("negative seek on discarder not allowed")
+	}
+	if off != r.pos {
+		i, err := io.Copy(io.Discard, io.LimitReader(r.r, off-r.pos))
+		if err != nil || i != off-r.pos {
+			return 0, err
+		}
+		r.pos += i
+	}
+	n, err := io.ReadFull(r.r, p)
+	if err != nil {
+		return n, err
+	}
+	r.pos += int64(n)
+	return n, err
+}
+
+var _ io.ReaderAt = &discarder{}
+
 // Reader implements RecordFormat.Reader.
 func (n newc) Reader(r io.ReaderAt) RecordReader {
 	return EOFReader{&reader{n: n, r: r}}
 }
 
+// NewFileReader implements RecordFormat.Reader. If the file
+// implements ReadAt, then it is used for greater efficiency.
+// If it only implements Read, then a discarder will be used
+// instead.
+// Note a complication:
+// 	r, _, _ := os.Pipe()
+//	var b [2]byte
+//	_, err := r.ReadAt(b[:], 0)
+//	fmt.Printf("%v", err)
+// Pipes claim to implement ReadAt; most Unix kernels
+// do not agree. Even a seek to the current position fails.
+// This means that
+// if rat, ok := r.(io.ReaderAt); ok {
+// would seem to work, but would fail when the
+// actual ReadAt on the pipe occurs, even for offset 0,
+// which does not require a seek! The kernel checks for
+// whether the fd is seekable and returns an error,
+// even for values of offset which won't require a seek.
+// So, the code makes a simple test: can we seek to
+// current offset? If not, then the file is wrapped with a
+// discardreader. The discard reader is far less efficient
+// but allows cpio to read from a pipe.
+func (n newc) NewFileReader(f *os.File) (RecordReader, error) {
+	_, err := f.Seek(0, 0)
+	if err == nil {
+		return EOFReader{&reader{n: n, r: f}}, nil
+	}
+	return EOFReader{&reader{n: n, r: &discarder{r: f}}}, nil
+}
+
 func (r *reader) read(p []byte) error {
 	n, err := r.r.ReadAt(p, r.pos)
+
 	if err == io.EOF {
 		return io.EOF
 	}
+
 	if err != nil || n != len(p) {
 		return fmt.Errorf("ReadAt(pos = %d): got %d, want %d bytes; error %v", r.pos, n, len(p), err)
 	}
+
 	r.pos += int64(n)
 	return nil
 }
@@ -208,8 +275,6 @@ func (r *reader) ReadRecord() (Record, error) {
 	hdr := header{}
 	recPos := r.pos
 
-	Debug("Next record: pos is %d\n", r.pos)
-
 	buf := make([]byte, hex.EncodedLen(binary.Size(hdr))+magicLen)
 	if err := r.read(buf); err != nil {
 		return Record{}, err
@@ -219,7 +284,6 @@ func (r *reader) ReadRecord() (Record, error) {
 	if magic := string(buf[:magicLen]); magic != r.n.magic {
 		return Record{}, fmt.Errorf("reader: magic got %q, want %q", magic, r.n.magic)
 	}
-	Debug("Header is %v\n", buf)
 
 	// Decode hex header fields.
 	dst := make([]byte, binary.Size(hdr))
@@ -234,6 +298,7 @@ func (r *reader) ReadRecord() (Record, error) {
 	// Get the name.
 	nameBuf := make([]byte, hdr.NameLength)
 	if err := r.readAligned(nameBuf); err != nil {
+		Debug("name read failed")
 		return Record{}, err
 	}
 
@@ -242,6 +307,7 @@ func (r *reader) ReadRecord() (Record, error) {
 
 	recLen := uint64(r.pos - recPos)
 	filePos := r.pos
+
 	content := io.NewSectionReader(r.r, r.pos, int64(hdr.FileSize))
 	r.pos = round4(r.pos + int64(hdr.FileSize))
 	return Record{

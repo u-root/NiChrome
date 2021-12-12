@@ -5,9 +5,11 @@
 package uio
 
 import (
+	"bytes"
 	"io"
-	"io/ioutil"
 	"math"
+	"os"
+	"reflect"
 )
 
 type inMemReaderAt interface {
@@ -24,10 +26,42 @@ func ReadAll(r io.ReaderAt) ([]byte, error) {
 	if imra, ok := r.(inMemReaderAt); ok {
 		return imra.Bytes(), nil
 	}
-	return ioutil.ReadAll(Reader(r))
+	return io.ReadAll(Reader(r))
 }
 
 // Reader generates a Reader from a ReaderAt.
 func Reader(r io.ReaderAt) io.Reader {
 	return io.NewSectionReader(r, 0, math.MaxInt64)
+}
+
+// ReaderAtEqual compares the contents of r1 and r2.
+func ReaderAtEqual(r1, r2 io.ReaderAt) bool {
+	var c, d []byte
+	var r1err, r2err error
+	if r1 != nil {
+		c, r1err = ReadAll(r1)
+	}
+	if r2 != nil {
+		d, r2err = ReadAll(r2)
+	}
+	return bytes.Equal(c, d) && reflect.DeepEqual(r1err, r2err)
+}
+
+// ReadIntoFile reads all from io.Reader into the file at given path.
+//
+// If the file at given path does not exist, a new file will be created.
+// If the file exists at the given path, but not empty, it will be truncated.
+func ReadIntoFile(r io.Reader, p string) error {
+	f, err := os.OpenFile(p, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = io.Copy(f, r)
+	if err != nil {
+		return err
+	}
+
+	return f.Close()
 }
