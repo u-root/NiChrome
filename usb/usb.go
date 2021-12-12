@@ -183,6 +183,7 @@ func cleanup() error {
 }
 
 func goGet() error {
+	return nil
 	cmd := exec.Command("go", append([]string{"get", "github.com/u-root/u-root"}, dynamicCmdList...)...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	return cmd.Run()
@@ -190,10 +191,8 @@ func goGet() error {
 
 func goBuildStatic() error {
 	oFile := filepath.Join(workingDir, "linux-stable", initramfs)
-	bbpath := filepath.Join(os.Getenv("GOPATH"), "src/github.com/u-root/u-root")
-	args := []string{"run", ".", "-o", oFile, "-build=bb", "core"}
-	cmd := exec.Command("go", append(args, staticCmdList...)...)
-	cmd.Dir = bbpath
+	args := []string{"-o", oFile, "../u-root/cmds/core/*"}
+	cmd := exec.Command("u-root", append(args, staticCmdList...)...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
 		return err
@@ -203,7 +202,7 @@ func goBuildStatic() error {
 }
 
 func goBuildDynamic() error {
-	args := []string{"run", ".", "-o", filepath.Join(workingDir, initramfs)}
+	args := []string{"-o", filepath.Join(workingDir, initramfs)}
 	for _, v := range []string{"usr", "lib", "tcz", "etc", "upspin", ".ssh"} {
 		if _, err := os.Stat(v); err != nil {
 			continue
@@ -214,11 +213,9 @@ func goBuildDynamic() error {
 	if false {
 		args = append(args, "-files", "pkg/sos/html:etc/sos/html")
 	}
-	bbpath := filepath.Join(os.Getenv("GOPATH"), "src/github.com/u-root/u-root")
 	args = append(args, dynamicCmdList...)
-	args = append(args, "github.com/u-root/u-root/cmds/*/*")
-	cmd := exec.Command("go", args...)
-	cmd.Dir = bbpath
+	args = append(args, "../u-root/cmds/*/*")
+	cmd := exec.Command("u-root", args...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
 		return err
@@ -347,7 +344,7 @@ func installUrootGpt() error {
 func vbutilIt() error {
 	// Try to read a GPT header from our output file. If we can, add a root_guid
 	// to config.txt, otherwise, don't bother.
-	args := []string{filepath.Join(os.Getenv("GOPATH"), "bin/gpt"), *dev}
+	args := []string{"gpt", *dev}
 	msg, err := exec.Command("sudo", args...).Output()
 	if err != nil {
 		log.Printf("gpt %v failed (warning only): %v", args, err)
@@ -437,7 +434,7 @@ func run(name string, args ...string) error {
 }
 
 func tcz() error {
-	t := filepath.Join(os.Getenv("GOPATH"), "bin/tcz")
+	t := filepath.Join("tcz")
 	if _, err := os.Stat(t); err != nil {
 		// let's try to be nice about this
 		if err := run("go", "install", "github.com/u-root/u-root/cmds/exp/tcz"); err != nil {
@@ -451,9 +448,6 @@ func tcz() error {
 }
 
 func check() error {
-	if os.Getenv("GOPATH") == "" {
-		return fmt.Errorf("You have to set GOPATH.")
-	}
 	return nil
 }
 
