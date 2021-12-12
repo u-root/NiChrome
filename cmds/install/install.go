@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/u-root/u-root/pkg/cpio"
-	"github.com/u-root/u-root/pkg/gpt"
+	"github.com/u-root/u-root/pkg/mount/gpt"
 )
 
 var cmdline = make(map[string]string)

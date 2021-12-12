@@ -2,34 +2,22 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build !plan9
+// +build !plan9
+
 package cpio
 
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
+	"time"
 
+	"github.com/u-root/u-root/pkg/ls"
 	"github.com/u-root/u-root/pkg/uio"
 	"golang.org/x/sys/unix"
-)
-
-// Linux mode_t bits.
-const (
-	modeTypeMask    = 0170000
-	modeSocket      = 0140000
-	modeSymlink     = 0120000
-	modeFile        = 0100000
-	modeBlock       = 0060000
-	modeDir         = 0040000
-	modeChar        = 0020000
-	modeFIFO        = 0010000
-	modeSUID        = 0004000
-	modeSGID        = 0002000
-	modeSticky      = 0001000
-	modePermissions = 0000777
 )
 
 var modeMap = map[uint64]os.FileMode{
@@ -95,14 +83,26 @@ func linuxModeToFileType(m uint64) (os.FileMode, error) {
 	if t, ok := modeMap[m&modeTypeMask]; ok {
 		return t, nil
 	}
-	return 0, fmt.Errorf("Invalid file type %#o", m&modeTypeMask)
+	return 0, fmt.Errorf("invalid file type %#o", m&modeTypeMask)
 }
 
+// CreateFile creates a local file for f relative to the current working
+// directory.
+//
+// CreateFile will attempt to set all metadata for the file, including
+// ownership, times, and permissions.
 func CreateFile(f Record) error {
-	return CreateFileInRoot(f, ".")
+	return CreateFileInRoot(f, ".", true)
 }
 
-func CreateFileInRoot(f Record, rootDir string) error {
+// CreateFileInRoot creates a local file for f relative to rootDir.
+//
+// It will attempt to set all metadata for the file, including ownership,
+// times, and permissions. If these fail, it only returns an error if
+// forcePriv is true.
+//
+// Block and char device creation will only return error if forcePriv is true.
+func CreateFileInRoot(f Record, rootDir string, forcePriv bool) error {
 	m, err := linuxModeToFileType(f.Mode)
 	if err != nil {
 		return err
@@ -115,14 +115,21 @@ func CreateFileInRoot(f Record, rootDir string) error {
 	// to create files in these directories, we have to make them at least
 	// mode 755.
 	if _, err := os.Stat(dir); os.IsNotExist(err) && len(dir) > 0 {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return err
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("CreateFileInRoot %q: %v", f.Name, err)
 		}
 	}
 
 	switch m {
 	case os.ModeSocket, os.ModeNamedPipe:
 		return fmt.Errorf("%q: type %v: cannot create IPC endpoints", f.Name, m)
+
+	case os.ModeSymlink:
+		content, err := io.ReadAll(uio.Reader(f))
+		if err != nil {
+			return err
+		}
+		return os.Symlink(string(content), f.Name)
 
 	case os.FileMode(0):
 		nf, err := os.Create(f.Name)
@@ -133,36 +140,30 @@ func CreateFileInRoot(f Record, rootDir string) error {
 		if _, err := io.Copy(nf, uio.Reader(f)); err != nil {
 			return err
 		}
-		return setModes(f)
 
 	case os.ModeDir:
 		if err := os.MkdirAll(f.Name, toFileMode(f)); err != nil {
 			return err
 		}
-		return setModes(f)
 
 	case os.ModeDevice:
-		if err := syscall.Mknod(f.Name, perm(f)|syscall.S_IFBLK, dev(f)); err != nil {
+		if err := mknod(f.Name, perm(f)|syscall.S_IFBLK, dev(f)); err != nil && forcePriv {
 			return err
 		}
-		return setModes(f)
 
 	case os.ModeCharDevice:
-		if err := syscall.Mknod(f.Name, perm(f)|syscall.S_IFCHR, dev(f)); err != nil {
+		if err := mknod(f.Name, perm(f)|syscall.S_IFCHR, dev(f)); err != nil && forcePriv {
 			return err
 		}
-		return setModes(f)
-
-	case os.ModeSymlink:
-		content, err := ioutil.ReadAll(uio.Reader(f))
-		if err != nil {
-			return err
-		}
-		return os.Symlink(string(content), f.Name)
 
 	default:
 		return fmt.Errorf("%v: Unknown type %#o", f.Name, m)
 	}
+
+	if err := setModes(f); err != nil && forcePriv {
+		return err
+	}
+	return nil
 }
 
 // Inumber and devnumbers are unique to Unix-like
@@ -178,10 +179,15 @@ type devInode struct {
 	ino uint64
 }
 
-var (
-	inodeMap = map[devInode]Info{}
+// A Recorder is a structure that contains variables used to calculate
+// file parameters such as inode numbers for a CPIO file. The life-time
+// of a Record structure is meant to be the same as the construction of a
+// single CPIO archive. Do not reuse between CPIOs if you don't know what
+// you're doing.
+type Recorder struct {
+	inodeMap map[devInode]Info
 	inumber  uint64
-)
+}
 
 // Certain elements of the file can not be set by cpio:
 // the Inode #
@@ -194,37 +200,41 @@ var (
 // If not, we get a new inumber for it and save the inode away.
 // This eliminates two of the messier parts of creating reproducible
 // output streams.
-func inode(i Info) (Info, bool) {
+func (r *Recorder) inode(i Info) (Info, bool) {
 	d := devInode{dev: i.Dev, ino: i.Ino}
 	i.Dev = 0
 
-	if d, ok := inodeMap[d]; ok {
+	if d, ok := r.inodeMap[d]; ok {
 		i.Ino = d.Ino
 		return i, true
 	}
 
-	i.Ino = inumber
-	inumber++
-	inodeMap[d] = i
+	i.Ino = r.inumber
+	r.inumber++
+	r.inodeMap[d] = i
 
 	return i, false
 }
 
-func GetRecord(path string) (Record, error) {
+// GetRecord returns a cpio Record for the given path on the local file system.
+//
+// GetRecord does not follow symlinks. If path is a symlink, the record
+// returned will reflect that symlink.
+func (r *Recorder) GetRecord(path string) (Record, error) {
 	fi, err := os.Lstat(path)
 	if err != nil {
 		return Record{}, err
 	}
 
 	sys := fi.Sys().(*syscall.Stat_t)
-	info, done := inode(sysInfo(path, sys))
+	info, done := r.inode(sysInfo(path, sys))
 
 	switch fi.Mode() & os.ModeType {
 	case 0: // Regular file.
 		if done {
 			return Record{Info: info}, nil
 		}
-		return Record{Info: info, ReaderAt: NewLazyFile(path)}, nil
+		return Record{Info: info, ReaderAt: uio.NewLazyFile(path)}, nil
 
 	case os.ModeSymlink:
 		linkname, err := os.Readlink(path)
@@ -235,5 +245,42 @@ func GetRecord(path string) (Record, error) {
 
 	default:
 		return StaticRecord(nil, info), nil
+	}
+}
+
+// NewRecorder creates a new Recorder.
+//
+// A recorder is a structure that contains variables used to calculate
+// file parameters such as inode numbers for a CPIO file. The life-time
+// of a Record structure is meant to be the same as the construction of a
+// single CPIO archive. Do not reuse between CPIOs if you don't know what
+// you're doing.
+func NewRecorder() *Recorder {
+	return &Recorder{make(map[devInode]Info), 2}
+}
+
+// LSInfoFromRecord converts a Record to be usable with the ls package for
+// listing files.
+func LSInfoFromRecord(rec Record) ls.FileInfo {
+	var target string
+
+	mode := modeFromLinux(rec.Mode)
+	if mode&os.ModeType == os.ModeSymlink {
+		if l, err := uio.ReadAll(rec); err != nil {
+			target = err.Error()
+		} else {
+			target = string(l)
+		}
+	}
+
+	return ls.FileInfo{
+		Name:          rec.Name,
+		Mode:          mode,
+		Rdev:          unix.Mkdev(uint32(rec.Rmajor), uint32(rec.Rminor)),
+		UID:           uint32(rec.UID),
+		GID:           uint32(rec.GID),
+		Size:          int64(rec.FileSize),
+		MTime:         time.Unix(int64(rec.MTime), 0).UTC(),
+		SymlinkTarget: target,
 	}
 }

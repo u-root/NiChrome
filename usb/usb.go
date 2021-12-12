@@ -27,7 +27,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/u-root/u-root/pkg/gpt"
+	"github.com/u-root/u-root/pkg/mount/gpt"
 )
 
 const initramfs = "initramfs.linux_amd64.cpio"
@@ -191,7 +191,11 @@ func goGet() error {
 
 func goBuildStatic() error {
 	oFile := filepath.Join(workingDir, "linux-stable", initramfs)
-	args := []string{"-o", oFile, "../u-root/cmds/core/*"}
+	n, err := filepath.Glob("../u-root/cmds/core/*")
+	if err != nil {
+		return fmt.Errorf("../u-root/cmds/core/*: %v", err)
+	}
+	args := append([]string{"-o", oFile}, n...)
 	cmd := exec.Command("u-root", append(args, staticCmdList...)...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -214,7 +218,11 @@ func goBuildDynamic() error {
 		args = append(args, "-files", "pkg/sos/html:etc/sos/html")
 	}
 	args = append(args, dynamicCmdList...)
-	args = append(args, "../u-root/cmds/*/*")
+	n, err := filepath.Glob("../u-root/cmds/*/*")
+	if err != nil {
+		return fmt.Errorf("../u-root/cmds/*/*: %v", err)
+	}
+	args = append(args, n...)
 	cmd := exec.Command("u-root", args...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
