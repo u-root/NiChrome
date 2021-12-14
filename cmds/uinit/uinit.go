@@ -158,10 +158,7 @@ func x11(n string, args ...string) error {
 // for this user.
 var (
 	namespace = []util.Creator{
-		util.Mount{Source: "tmpfs", Target: "/go/pkg/linux_amd64", FSType: "tmpfs"},
 		util.Mount{Source: "tmpfs", Target: "/dev/shm", FSType: "tmpfs"},
-		util.Mount{Source: "tmpfs", Target: "/ubin", FSType: "tmpfs"},
-		util.Mount{Source: "tmpfs", Target: "/pkg", FSType: "tmpfs"},
 	}
 	rootFileSystem = []util.Creator{
 		util.Dir{Name: "/go/pkg/linux_amd64", Mode: 0777},
@@ -170,8 +167,6 @@ var (
 		util.Dir{Name: "/ubin", Mode: 0777},
 		// fusermount requires this. When we write our own we can remove this.
 		util.Symlink{NewPath: "/etc/mtab", Target: "/proc/mounts"},
-		// Sigh.
-		util.Symlink{NewPath: "/bin/sh", Target: "/bin/bash"},
 		// Resolve localhost name
 		util.File{Name: "/etc/hosts", Contents: "127.0.0.1\tlocalhost\n::1\tlocalhost ip6-localhost ip6-loopback\n", Mode: 0644},
 	}
@@ -368,50 +363,6 @@ func main() {
 
 	if err := tczSetup(); err != nil {
 		log.Printf("tczSetup: %v", err)
-	}
-
-	// buildbin was not populated, potentially, so we have to do it again.
-	c, err := filepath.Glob("/src/github.com/u-root/*/cmds/*/[a-z]*")
-	if err != nil || len(c) == 0 {
-		log.Printf("In a break with tradition, you seem to have NO u-root commands: %v", err)
-	}
-	o, err := filepath.Glob("/src/*/*/*")
-	if err != nil {
-		log.Printf("Your filepath glob for other commands seems busted: %v", err)
-	}
-	c = append(c, o...)
-	for _, v := range c {
-		name := filepath.Base(v)
-		if name == "installcommand" || name == "init" {
-			continue
-		} else {
-			destPath := filepath.Join("/buildbin", name)
-			source := "/buildbin/installcommand"
-			if err := os.Symlink(source, destPath); err != nil {
-				log.Printf("Symlink %v -> %v failed; %v", source, destPath, err)
-			}
-		}
-	}
-
-	a := []string{"build"}
-	envs := os.Environ()
-	debug("envs %v", envs)
-	//os.Setenv("GOBIN", "/buildbin")
-	// util.CmdsPath vanished
-	//a = append(a, "-o", "/buildbin/installcommand", filepath.Join(util.CmdsPath, "installcommand"))
-	a = append(a, "-o", "/buildbin/installcommand", "github.com/u-root/u-root/cmds/core/installcommand")
-	icmd := exec.Command("go", a...)
-	installenvs := envs
-	installenvs = append(envs, "GOBIN=/buildbin")
-	icmd.Env = installenvs
-	icmd.Dir = "/"
-
-	icmd.Stdin = os.Stdin
-	icmd.Stderr = os.Stderr
-	icmd.Stdout = os.Stdout
-	debug("Run %v", icmd)
-	if err := icmd.Run(); err != nil {
-		log.Printf("%v\n", err)
 	}
 
 	cmd := exec.Command("ip", "addr", "add", "127.0.0.1/24", "lo")
