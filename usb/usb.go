@@ -12,8 +12,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	flag "github.com/spf13/pflag"
 	"fmt"
+	flag "github.com/spf13/pflag"
 	"io"
 	"io/ioutil"
 	"log"
@@ -41,7 +41,7 @@ rootwait
 	fetch    = flag.Bool("fetch", false, "Fetch all the things we need")
 	skiproot = flag.Bool("skiproot", false, "Don't put the root onto usb")
 	skipkern = flag.Bool("skipkern", false, "Don't put the kern onto usb")
-	keys     = flag.String("keys", "vboot_reference/tests/devkeys", "where the keys live")
+	keys     = flag.String("keys", "vboot/tests/devkeys", "where the keys live")
 	dev      = flag.String("dev", "/dev/null", "What device to use")
 	config   = flag.String("config", "CONFIG", "Linux config file")
 	extra    = flag.String("extra", "", "Comma-separated list of extra packages to include")
@@ -166,7 +166,7 @@ func aptget() error {
 }
 
 func cleanup() error {
-	filesToRemove := [...]string{"linux-stable", "vboot_reference", "linux-firmware"}
+	filesToRemove := [...]string{"linux-stable", "vboot", "linux-firmware"}
 	fmt.Printf("-------- Removing problematic files %v\n", filesToRemove)
 	for _, file := range filesToRemove {
 		if _, err := os.Stat(file); err != nil {
@@ -223,6 +223,7 @@ func goBuildDynamic() error {
 		return fmt.Errorf("../u-root/cmds/*/*: %v", err)
 	}
 	args = append(args, n...)
+	log.Printf("Run u-root with args %v", args)
 	cmd := exec.Command("u-root", args...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -319,22 +320,15 @@ func buildKernel() error {
 
 func getVbutil() error {
 	fmt.Printf("-------- Building in Vbutil\n")
-	cmd := exec.Command("git", "clone", "https://chromium.googlesource.com/chromiumos/platform/vboot_reference")
+	cmd := exec.Command("git", "clone", "https://github.com/coreboot/vboot")
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	return cmd.Run()
 }
 
 func buildVbutil() error {
-	cmd := exec.Command("git", "checkout", "3f3a496a23088731e4ab5654b02fbc13a6881c65")
+	cmd := exec.Command("make", "-j"+strconv.Itoa(threads))
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
-	cmd.Dir = "vboot_reference"
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("couldn't checkout the right branch")
-		return err
-	}
-	cmd = exec.Command("make", "-j"+strconv.Itoa(threads))
-	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
-	cmd.Dir = "vboot_reference"
+	cmd.Dir = "vboot"
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("Make failed. Please try to manually install vbutil")
 		return err
@@ -388,7 +382,7 @@ func vbutilIt() error {
 	fmt.Printf("Bz image is located at %s \n", bzImage)
 	keyblock := filepath.Join(*keys, "recovery_kernel.keyblock")
 	sign := filepath.Join(*keys, "recovery_kernel_data_key.vbprivk")
-	cmd := exec.Command("./vboot_reference/build/futility/futility", "vbutil_kernel", "--pack", newKern, "--keyblock", keyblock, "--signprivate", sign, "--version", "1", "--vmlinuz", bzImage, "--bootloader", "nocontent.efi", "--config", "config.txt", "--arch", "x86")
+	cmd := exec.Command("./vboot/build/futility/futility", "vbutil_kernel", "--pack", newKern, "--keyblock", keyblock, "--signprivate", sign, "--version", "1", "--vmlinuz", bzImage, "--bootloader", "nocontent.efi", "--config", "config.txt", "--arch", "x86")
 	stdoutStderr, err := cmd.CombinedOutput()
 	fmt.Printf("%s\n", stdoutStderr)
 	return err
