@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build go1.11
-
 package main
 
 //include a loading bar
@@ -205,24 +203,14 @@ func goBuildStatic() error {
 	return nil
 }
 
+// A new change: we no longer need to add u-root to this partition,
+// as we build it all for the "static" case.
 func goBuildDynamic() error {
-	args := []string{"-o", filepath.Join(workingDir, initramfs)}
-	for _, v := range []string{"usr", "lib", "tcz", "etc", "upspin", ".ssh"} {
-		if _, err := os.Stat(v); err != nil {
-			continue
-		}
-		args = append(args, "-files", filepath.Join(workingDir, v)+":"+v)
-	}
+	args := []string{"-o", filepath.Join(workingDir, initramfs), "-nocmd", "-files", "rootfs:", "-files", "/usr/bin/bash", "-base", "/dev/null"}
 	log.Print("WARNING: skipping pkg/sos/html; fix me")
 	if false {
 		args = append(args, "-files", "pkg/sos/html:etc/sos/html")
 	}
-	args = append(args, dynamicCmdList...)
-	n, err := filepath.Glob("../u-root/cmds/*/*")
-	if err != nil {
-		return fmt.Errorf("../u-root/cmds/*/*: %v", err)
-	}
-	args = append(args, n...)
 	log.Printf("Run u-root with args %v", args)
 	cmd := exec.Command("u-root", args...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
@@ -346,14 +334,21 @@ func installUrootGpt() error {
 func vbutilIt() error {
 	// Try to read a GPT header from our output file. If we can, add a root_guid
 	// to config.txt, otherwise, don't bother.
-	args := []string{"gpt", *dev}
-	msg, err := exec.Command("sudo", args...).Output()
-	if err != nil {
-		log.Printf("gpt %v failed (warning only): %v", args, err)
-	}
+	var pt = &gpt.PartitionTable{}
 	var pg gpt.GUID
-	if err == nil {
-		var pt = &gpt.PartitionTable{}
+	if *dev == "/dev/null" {
+		log.Printf("Skipping the gpt step, since *dev is /dev/null")
+	} else {
+		gptcmd, err := exec.LookPath("gpt")
+		if err != nil {
+			return fmt.Errorf("Can not find a GPT command: %v", err)
+		}
+		args := []string{gptcmd, *dev}
+		msg, err := exec.Command("sudo", args...).Output()
+		if err != nil {
+			return fmt.Errorf("gpt %v failed: %v", args, err)
+		}
+
 		if err := json.NewDecoder(bytes.NewBuffer(msg)).Decode(&pt); err != nil {
 			log.Printf("Reading in GPT JSON, warning only: %v", err)
 		} else if pt.Primary == nil || pt.MasterBootRecord == nil {
