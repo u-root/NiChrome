@@ -4,13 +4,10 @@
 
 // This is the basic chromebook uinit.
 
-// +build go1.11
-
 package main
 
 import (
 	"fmt"
-	flag "github.com/spf13/pflag"
 	"io"
 	"io/ioutil"
 	"log"
@@ -21,9 +18,10 @@ import (
 	"syscall"
 	"time"
 
+	flag "github.com/spf13/pflag"
+
 	"github.com/u-root/u-root/pkg/cpio"
 	"github.com/u-root/u-root/pkg/mount/gpt"
-	"github.com/u-root/u-root/pkg/uroot/util"
 )
 
 // For now we are going to stick with a single
@@ -157,18 +155,18 @@ func x11(n string, args ...string) error {
 // The tmp is particularly useful as it avoids races between root-owned files and files
 // for this user.
 var (
-	namespace = []util.Creator{
-		util.Mount{Source: "tmpfs", Target: "/dev/shm", FSType: "tmpfs"},
+	namespace = []Creator{
+		Mount{Source: "tmpfs", Target: "/dev/shm", FSType: "tmpfs"},
 	}
-	rootFileSystem = []util.Creator{
-		util.Dir{Name: "/go/pkg/linux_amd64", Mode: 0777},
-		util.Dir{Name: "/dev/shm", Mode: 0777},
-		util.Dir{Name: "/pkg", Mode: 0777},
-		util.Dir{Name: "/ubin", Mode: 0777},
+	rootFileSystem = []Creator{
+		Dir{Name: "/go/pkg/linux_amd64", Mode: 0777},
+		Dir{Name: "/dev/shm", Mode: 0777},
+		Dir{Name: "/pkg", Mode: 0777},
+		Dir{Name: "/ubin", Mode: 0777},
 		// fusermount requires this. When we write our own we can remove this.
-		util.Symlink{NewPath: "/etc/mtab", Target: "/proc/mounts"},
+		Symlink{NewPath: "/etc/mtab", Target: "/proc/mounts"},
 		// Resolve localhost name
-		util.File{Name: "/etc/hosts", Contents: "127.0.0.1\tlocalhost\n::1\tlocalhost ip6-localhost ip6-loopback\n", Mode: 0644},
+		File{Name: "/etc/hosts", Contents: "127.0.0.1\tlocalhost\n::1\tlocalhost ip6-localhost ip6-loopback\n", Mode: 0644},
 	}
 )
 
