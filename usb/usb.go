@@ -191,9 +191,9 @@ func goGet() error {
 
 func goBuildStatic() error {
 	oFile := filepath.Join(workingDir, "linux-stable", initramfs)
-	n, err := filepath.Glob("../u-root/cmds/core/*")
+	n, err := filepath.Glob("../u-root/cmds/[ce]*/*")
 	if err != nil {
-		return fmt.Errorf("../u-root/cmds/core/*: %v", err)
+		return fmt.Errorf("../u-root/cmds/[ce]/*: %v", err)
 	}
 	args := append([]string{"-o", oFile}, n...)
 	cmd := exec.Command("u-root", append(args, staticCmdList...)...)
@@ -436,7 +436,7 @@ func run(name string, args ...string) error {
 }
 
 func tcz() error {
-	return run("tcz", append([]string{"-d", "-i=false", "-r=tcz"}, tczList...)...)
+	return run("tcz", append([]string{"-d", "-i=false", "-r=rootfs/tcz"}, tczList...)...)
 }
 
 func check() error {
