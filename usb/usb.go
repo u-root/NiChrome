@@ -239,7 +239,7 @@ func getSUIDbinaries() error {
 	}
 	binaries := []string{"/bin/fusermount"}
 	for _, b := range binaries {
-		cmd := exec.Command("sudo", "rsync", "-av", b, "usr/bin/")
+		cmd := exec.Command("sudo", "rsync", "-av", b, "rootfs/usr/bin/")
 		cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 		cmd.Env = os.Environ()
 		if err := cmd.Run(); err != nil {

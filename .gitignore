@@ -2,6 +2,7 @@ nocontent.efi
 linux-stable
 linux-firmware
 vboot_reference
+vboot
 config.txt
 newKern
 usb/usb
@@ -24,4 +25,4 @@ upspin/
 etc/
 
 # we install binaries into usr/bin, ignore it.
-usr/bin/
+rootfs/usr/bin/
