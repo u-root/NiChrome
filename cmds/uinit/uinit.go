@@ -3,14 +3,10 @@
 // license that can be found in the LICENSE file.
 
 // This is the basic chromebook uinit.
-
-// +build go1.11
-
 package main
 
 import (
 	"fmt"
-	flag "github.com/spf13/pflag"
 	"io"
 	"io/ioutil"
 	"log"
@@ -21,9 +17,11 @@ import (
 	"syscall"
 	"time"
 
+	flag "github.com/spf13/pflag"
+
 	"github.com/u-root/u-root/pkg/cpio"
+	"github.com/u-root/u-root/pkg/libinit"
 	"github.com/u-root/u-root/pkg/mount/gpt"
-	"github.com/u-root/u-root/pkg/uroot/util"
 )
 
 // For now we are going to stick with a single
@@ -152,28 +150,42 @@ func x11(n string, args ...string) error {
 	return nil
 }
 
+// Not sure why this is not already in u-root.
+type File struct {
+	Name, Contents string
+	Mode           os.FileMode
+}
+
+func (f File) Create() error {
+	return os.WriteFile(f.Name, []byte(f.Contents), f.Mode)
+}
+
+func (f File) String() string {
+	return fmt.Sprintf("file %q", f.Name)
+}
+
 // When we make the transition to a new user we need to set up a new namespace for that user.
 // So far the only thing we know we need to do is remount ubin, tmp, env, and go/pkg
 // The tmp is particularly useful as it avoids races between root-owned files and files
 // for this user.
 var (
-	namespace = []util.Creator{
-		util.Mount{Source: "tmpfs", Target: "/go/pkg/linux_amd64", FSType: "tmpfs"},
-		util.Mount{Source: "tmpfs", Target: "/dev/shm", FSType: "tmpfs"},
-		util.Mount{Source: "tmpfs", Target: "/ubin", FSType: "tmpfs"},
-		util.Mount{Source: "tmpfs", Target: "/pkg", FSType: "tmpfs"},
+	namespace = []libinit.Creator{
+		libinit.Mount{Source: "tmpfs", Target: "/go/pkg/linux_amd64", FSType: "tmpfs"},
+		libinit.Mount{Source: "tmpfs", Target: "/dev/shm", FSType: "tmpfs"},
+		libinit.Mount{Source: "tmpfs", Target: "/ubin", FSType: "tmpfs"},
+		libinit.Mount{Source: "tmpfs", Target: "/pkg", FSType: "tmpfs"},
 	}
-	rootFileSystem = []util.Creator{
-		util.Dir{Name: "/go/pkg/linux_amd64", Mode: 0777},
-		util.Dir{Name: "/dev/shm", Mode: 0777},
-		util.Dir{Name: "/pkg", Mode: 0777},
-		util.Dir{Name: "/ubin", Mode: 0777},
+	rootFileSystem = []libinit.Creator{
+		libinit.Dir{Name: "/go/pkg/linux_amd64", Mode: 0777},
+		libinit.Dir{Name: "/dev/shm", Mode: 0777},
+		libinit.Dir{Name: "/pkg", Mode: 0777},
+		libinit.Dir{Name: "/ubin", Mode: 0777},
 		// fusermount requires this. When we write our own we can remove this.
-		util.Symlink{NewPath: "/etc/mtab", Target: "/proc/mounts"},
+		libinit.Symlink{NewPath: "/etc/mtab", Target: "/proc/mounts"},
 		// Sigh.
-		util.Symlink{NewPath: "/bin/sh", Target: "/bin/bash"},
+		libinit.Symlink{NewPath: "/bin/sh", Target: "/bin/bash"},
 		// Resolve localhost name
-		util.File{Name: "/etc/hosts", Contents: "127.0.0.1\tlocalhost\n::1\tlocalhost ip6-localhost ip6-loopback\n", Mode: 0644},
+		File{Name: "/etc/hosts", Contents: "127.0.0.1\tlocalhost\n::1\tlocalhost ip6-localhost ip6-loopback\n", Mode: 0644},
 	}
 )
 
