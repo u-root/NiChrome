@@ -18,7 +18,7 @@ jobs:
       with:
         go-version: 1.17
 
-    - name: Build
+    - name: Build All
+      run: go build ./...
+    - name: Build USB
       run: (cd usb && go build .)
-    - name: usb
-      run: ./usb/usb -fetch
